@@ -14,6 +14,12 @@ Dejar base frontend lista para trabajo del equipo junior, con flujo de ramas cla
 - Se agrego workflow CI para lint + test + build en cambios de `frontend/`.
 - Se documento flujo de ramas, commits y PRs para frontend.
 
+## Commits realizados
+
+- `chore(frontend): bootstrap React TypeScript workspace`
+- `ci(frontend): add lint test build workflow`
+- `docs(frontend): add onboarding workflow and PR log`
+
 ## Archivos clave
 
 - `frontend/package.json`
@@ -33,7 +39,7 @@ Ejecutado en `frontend/`:
 ## Checklist antes de PR a develop
 
 - [x] Rama creada desde `develop`
-- [ ] Commits convencionales y atomicos
+- [x] Commits convencionales y atomicos
 - [x] `npm run lint` OK
 - [x] `npm run test` OK
 - [x] `npm run build` OK
