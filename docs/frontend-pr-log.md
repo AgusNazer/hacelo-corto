@@ -35,6 +35,7 @@ Ejecutado en `frontend/`:
 - `npm run lint` -> OK
 - `npm run test` -> OK (1 test)
 - `npm run build` -> OK
+- `npm run dev -- --host 0.0.0.0 --port 4173` -> OK (arranca en local)
 
 ## Checklist antes de PR a develop
 
