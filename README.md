@@ -1,5 +1,17 @@
 # S02-26-Equipo-04-Web-App-Development
 
-## Automatización de Generación de Videos Verticales
+## Objetivo
 
-Este proyecto busca automatizar la generación de videos verticales a partir de videos horizontales, manteniendo la información relevante en pantalla y optimizando el encuadre, permitiendo una presencia constante en redes sociales sin esfuerzo manual.
+Este proyecto busca automatizar la generacion de videos verticales a partir de videos horizontales, manteniendo la informacion relevante en pantalla y optimizando el encuadre para presencia constante en redes sociales.
+
+## Estructura del monorepo
+
+- `backend/`: APIs, procesamiento y servicios de infraestructura.
+- `frontend/`: aplicacion web (React + TypeScript + Tailwind + Zustand).
+- `docs/`: guias de trabajo para el equipo.
+
+## Documentacion de equipo frontend
+
+- Guia de ramas y PRs: `docs/frontend-git-workflow.md`
+- Bitacora para PR a `develop`: `docs/frontend-pr-log.md`
+- Setup local frontend: `frontend/README.md`
