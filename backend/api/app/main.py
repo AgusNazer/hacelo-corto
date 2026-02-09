@@ -41,9 +41,9 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info("=" * 50)
     
-    logger.info("📊 Initializing database...")
-    init_db()
-    logger.info("✅ Database initialized")
+    # Database migrations are handled by Alembic
+    # Run: docker exec -it fastapi alembic upgrade head
+    logger.info("⚠️ Remember to run Alembic migrations: alembic upgrade head")
     
     if redis_client.ping():
         logger.info("✅ Redis connected")

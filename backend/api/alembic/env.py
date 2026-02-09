@@ -4,6 +4,7 @@ from alembic import context
 from app.database.base import Base
 from app.core.config import settings
 from app.models.user import User
+from app.models.profile import Profile  # ← Importar Profile
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
