@@ -22,6 +22,25 @@ Este directorio contiene la app web del equipo frontend.
 npm install
 ```
 
+## Variables de entorno
+
+1. Copiar el archivo de ejemplo:
+
+```bash
+cp .env.example .env
+```
+
+2. Ajustar `VITE_API_BASE_URL` segun tu entorno local.
+
+La configuracion base se centraliza en `src/config/env.ts`.
+
+## Tailwind CSS v4
+
+- El proyecto usa `tailwindcss@4` con el plugin oficial `@tailwindcss/vite`.
+- La importacion de Tailwind se hace en `src/index.css` con `@import "tailwindcss";`.
+- Los tokens de tema (Tokyo Night) se definen en `src/index.css` dentro de `@theme`.
+- No usamos `tailwind.config.ts` ni `postcss.config.js` en esta version.
+
 ## Comandos utiles
 
 ```bash
