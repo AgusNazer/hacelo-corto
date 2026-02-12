@@ -157,7 +157,7 @@ if __name__ == "__main__":
     #redis_listener()
 
     # Llama a procesar manual para probar pipeline.py
-    VIDEO_PATH = "example.mp4" #poner un video de prueba en el directorio de worker.py
+    VIDEO_PATH = "example.mp4" #poner un video de prueba en el directorio /worker
     INICIO = 0
     FIN = 20
     try:
