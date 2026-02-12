@@ -1,8 +1,32 @@
-import { Link } from "react-router";
-import { useAuthStore } from "../store/useAuthStore";
+"use client";
 
-export function AppHomePage() {
+import { useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getProtectedRedirect } from "@/src/router/redirects";
+import { useAuthStore } from "@/src/store/useAuthStore";
+
+export default function AppHomePage() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const logout = useAuthStore((state) => state.logout);
+  const router = useRouter();
+
+  useEffect(() => {
+    const redirectPath = getProtectedRedirect(isAuthenticated);
+
+    if (redirectPath) {
+      router.replace(redirectPath);
+    }
+  }, [isAuthenticated, router]);
+
+  const handleLogout = () => {
+    logout();
+    router.replace("/");
+  };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <section className="mx-auto flex min-h-screen w-full max-w-4xl flex-col justify-center gap-5 px-6 py-10">
@@ -16,12 +40,12 @@ export function AppHomePage() {
         <button
           type="button"
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
-          onClick={logout}
+          onClick={handleLogout}
         >
           Cerrar sesion mock
         </button>
         <Link
-          to="/"
+          href="/"
           className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
         >
           Ir a landing

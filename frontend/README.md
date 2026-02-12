@@ -36,8 +36,8 @@ La configuracion base se centraliza en `src/config/env.ts`.
 ## Tailwind CSS v4
 
 - El proyecto usa `tailwindcss@4` con el plugin oficial `@tailwindcss/postcss`.
-- La importacion de Tailwind se hace en `app/globals.css` con `@import "tailwindcss";`.
-- Los tokens de tema se definen en `app/globals.css` dentro de `@theme`.
+- La importacion de Tailwind se hace en `src/app/globals.css` con `@import "tailwindcss";`.
+- Los tokens de tema se definen en `src/app/globals.css` dentro de `@theme`.
 - No usamos `tailwind.config.ts` ni `postcss.config.js` en esta version.
 
 ## Comandos utiles
