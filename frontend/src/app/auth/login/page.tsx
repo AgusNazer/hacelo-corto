@@ -1,13 +1,27 @@
-import { Link, useNavigate } from "react-router";
-import { useAuthStore } from "../store/useAuthStore";
+"use client";
 
-export function LoginPage() {
+import { useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getPublicOnlyRedirect } from "@/src/router/redirects";
+import { useAuthStore } from "@/src/store/useAuthStore";
+
+export default function LoginPage() {
   const login = useAuthStore((state) => state.login);
-  const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const router = useRouter();
+
+  useEffect(() => {
+    const redirectPath = getPublicOnlyRedirect(isAuthenticated);
+
+    if (redirectPath) {
+      router.replace(redirectPath);
+    }
+  }, [isAuthenticated, router]);
 
   const handleDemoLogin = () => {
     login();
-    navigate("/app", { replace: true });
+    router.replace("/app");
   };
 
   return (
@@ -28,11 +42,14 @@ export function LoginPage() {
 
       <p className="text-sm text-slate-600">
         No tienes cuenta?{" "}
-        <Link to="/auth/register" className="font-semibold text-slate-900 underline decoration-slate-400 underline-offset-4">
+        <Link
+          href="/auth/register"
+          className="font-semibold text-slate-900 underline decoration-slate-400 underline-offset-4"
+        >
           Registrate
         </Link>
       </p>
-      <Link to="/" className="text-sm font-medium text-slate-600 underline decoration-slate-300 underline-offset-4">
+      <Link href="/" className="text-sm font-medium text-slate-600 underline decoration-slate-300 underline-offset-4">
         Volver a la landing
       </Link>
     </section>
