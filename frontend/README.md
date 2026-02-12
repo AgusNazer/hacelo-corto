@@ -4,11 +4,10 @@ Este directorio contiene la app web del equipo frontend.
 
 ## Stack
 
-- React
+- Next.js
 - TypeScript
 - Tailwind CSS
 - Zustand
-- Vite
 - Vitest
 
 ## Requisitos
@@ -30,15 +29,15 @@ npm install
 cp .env.example .env
 ```
 
-2. Ajustar `VITE_API_BASE_URL` segun tu entorno local.
+2. Ajustar `NEXT_PUBLIC_API_BASE_URL` segun tu entorno local.
 
 La configuracion base se centraliza en `src/config/env.ts`.
 
 ## Tailwind CSS v4
 
-- El proyecto usa `tailwindcss@4` con el plugin oficial `@tailwindcss/vite`.
-- La importacion de Tailwind se hace en `src/index.css` con `@import "tailwindcss";`.
-- Los tokens de tema (Tokyo Night) se definen en `src/index.css` dentro de `@theme`.
+- El proyecto usa `tailwindcss@4` con el plugin oficial `@tailwindcss/postcss`.
+- La importacion de Tailwind se hace en `app/globals.css` con `@import "tailwindcss";`.
+- Los tokens de tema se definen en `app/globals.css` dentro de `@theme`.
 - No usamos `tailwind.config.ts` ni `postcss.config.js` en esta version.
 
 ## Comandos utiles
@@ -48,6 +47,7 @@ npm run dev
 npm run lint
 npm run test
 npm run build
+npm run start
 ```
 
 ## Flujo recomendado
