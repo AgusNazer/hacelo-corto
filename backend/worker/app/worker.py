@@ -4,6 +4,22 @@ import os
 import subprocess
 import cv2
 import time
+from app.pipeline import process
+
+"""
+============================
+    worker.py
+============================
+Este es el worker que se ejecuta en el contenedor "worker" y se encarga de:
+- Escuchar trabajos de procesamiento de video enviados por la API a través de Redis.
+- Llamar a pipeline.py para procesar videos.
+TODO:
+- Etc. (a definir)
+- Enviar eventos de vuelta a la API para que esta actualice la base de datos.(!?)
+- No tiene acceso directo a la base de datos, solo se comunica vía redis.(!?)
+"""
+
+
 
 def check_ffmpeg():
     """
@@ -22,6 +38,7 @@ def check_ffmpeg():
         return f"FFmpeg error: {e}"
 
 
+
 def check_opencv():
     """
     Verifica que OpenCV esté correctamente instalado
@@ -31,6 +48,7 @@ def check_opencv():
         return f"OpenCV version {cv2.__version__}"
     except Exception as e:
         return f"OpenCV error: {e}"
+
 
 
 def check_redis():
@@ -43,6 +61,7 @@ def check_redis():
         return "Redis connected"
     except Exception as e:
         return f"Redis error: {e}"
+
 
 
 def check_dependencies():
@@ -60,6 +79,8 @@ def check_dependencies():
     for k, v in status.items():
         print(f"{k}: {v}")
 
+
+
 def publish_event(r, event_type, extra_data=None):
     """
     Publica un evento al canal 'video_events' para que la API lo reciba.
@@ -74,6 +95,7 @@ def publish_event(r, event_type, extra_data=None):
 
     r.publish("video_events", json.dumps(event))
     print(f"📤 Evento enviado: {event}", flush=True)
+
 
 
 def redis_listener():
@@ -103,9 +125,15 @@ def redis_listener():
         if message["type"] == "message":
             try:
                 job = json.loads(message["data"])
-                print(f"🎬 Job recibido: {job}", flush=True)
+                print(f"🎬 Job recibed: {job}", flush=True)
 
-                # 👉 Aquí irá luego el procesamiento real de video
+                # 👉 Aquí irá luego el procesamiento real de video, algo asi...
+                """
+                try:
+                    procesar(job["video_path"], job["inicio"], job["fin"])
+                except Exception as e:
+                    print("ERROR:", e, flush=True)
+                """
 
                 # Simular fin de procesamiento
                 time.sleep(2)
@@ -113,7 +141,8 @@ def redis_listener():
                 publish_event(r, "VIDEO_PROCESSED", {"job_id": job.get("job_id")})
 
             except Exception as e:
-                print(f"⚠️ Error procesando job: {e}", flush=True)
+                print(f"⚠️ Error on job: {e}", flush=True)
+
 
 
 if __name__ == "__main__":
@@ -123,4 +152,15 @@ if __name__ == "__main__":
     print("\n🚀 VIDEO WORKER STARTING...\n", flush=True)
 
     check_dependencies()
-    redis_listener()
+    
+    # Este loop infinto por ahora lo sacamos! Luego desde ahi vamos a llamar a procesar video...
+    #redis_listener()
+
+    # Llama a procesar manual para probar pipeline.py
+    VIDEO_PATH = "example.mp4" #poner un video de prueba en el directorio de worker.py
+    INICIO = 0
+    FIN = 20
+    try:
+        process(VIDEO_PATH, INICIO, FIN)
+    except Exception as e:
+        print("ERROR:", e, flush=True)
