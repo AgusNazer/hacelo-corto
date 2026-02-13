@@ -3,7 +3,7 @@ import { Film, Home, Settings2, Upload, Waypoints, X } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 
 const items = [
-  { icon: Home, label: 'Panel', href: '/app/panel' },
+  { icon: Home, label: 'Panel', href: '/app' },
   { icon: Waypoints, label: 'Timeline editor', href: '/app/timeline' },
   { icon: Film, label: 'Biblioteca clips', href: '/app/library' },
   { icon: Upload, label: 'Exportacion', href: '/app/export' },
@@ -70,11 +70,11 @@ export function Sidebar({ mobileOpen, closeMobile }: SidebarProps) {
             )
           })}
         </nav>
-
+{/* 
         <div className="mt-10 rounded-2xl border border-neon-magenta/25 bg-neon-magenta/10 p-4 text-sm text-neon-magenta">
           <p className="font-semibold">Hacelo Corto</p>
           <p className="mt-1 text-xs text-neon-magenta/80">View transitions en navegacion interna.</p>
-        </div>
+        </div> */}
       </aside>
     </>
   )
