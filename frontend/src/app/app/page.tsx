@@ -51,6 +51,6 @@ export default function AppHomePage() {
           Ir a landing
         </Link>
       </div>
-    </section>
+     </section>
   );
 }
