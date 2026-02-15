@@ -2,7 +2,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, KeyRound, Mail, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, KeyRound, Mail, ShieldCheck, Sparkles } from "lucide-react";
 import { getPublicOnlyRedirect } from "@/src/router/redirects";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import Image from "next/image";
@@ -11,6 +11,7 @@ import { Button } from "@/src/components/ui/Button";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const login = useAuthStore((state) => state.login);
   const bootstrapSession = useAuthStore((state) => state.bootstrapSession);
@@ -107,10 +108,10 @@ export default function LoginPage() {
               <span className="flex h-12 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3">
                 <KeyRound className="h-4 w-4 text-neon-violet" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="********"
                   value={password}
-                  autoComplete="username"
+                  autoComplete="current-password"
                   onChange={(event) => {
                     setPassword(event.target.value);
                     if (error) {
@@ -120,6 +121,14 @@ export default function LoginPage() {
                   className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/35"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((currentValue) => !currentValue)}
+                  className="text-white/55 transition hover:text-neon-cyan"
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </span>
             </label>
             {error ? <p className="text-sm font-medium text-rose-300">{error}</p> : null}

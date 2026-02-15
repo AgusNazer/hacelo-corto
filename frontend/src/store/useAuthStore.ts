@@ -44,7 +44,7 @@ function clearStoredToken() {
 function normalizeAuthError(error: unknown) {
   if (error instanceof AuthApiError) {
     if (error.status === 401) {
-      return "Credenciales invalidas.";
+      return "Email o contrasena incorrectos.";
     }
 
     if (error.status === 422) {
@@ -55,6 +55,12 @@ function normalizeAuthError(error: unknown) {
   }
 
   if (error instanceof Error) {
+    const normalizedMessage = error.message.toLowerCase();
+
+    if (normalizedMessage.includes("failed to fetch") || normalizedMessage.includes("networkerror")) {
+      return "No pudimos validar tus credenciales. Verifica email y contrasena e intenta otra vez.";
+    }
+
     return error.message;
   }
 
