@@ -1,7 +1,7 @@
 "use client";
 
-import NavBar from "@/src/layouts/NavBar";
-import { Sidebar } from "@/src/layouts/Sidebar";
+import NavBar from "@/src/components/layout/NavBar";
+import { Sidebar } from "@/src/components/layout/Sidebar";
 import { getProtectedRedirect } from "@/src/router/redirects";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useRouter } from "next/navigation";
