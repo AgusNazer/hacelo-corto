@@ -71,6 +71,33 @@ Base recomendada para crecer sin mezclar responsabilidades:
 - `src/config/`: variables de entorno y configuracion.
 - `src/router/`: reglas de redireccion y utilidades de navegacion.
 
+Vista grafica sugerida:
+
+```text
+src/
+|-- app/                         # Rutas (App Router)
+|   |-- layout.tsx
+|   |-- page.tsx
+|   |-- auth/
+|   |   |-- login/page.tsx
+|   |   `-- register/page.tsx
+|   `-- app/
+|       |-- layout.tsx
+|       `-- page.tsx
+|-- components/
+|   |-- ui/                      # Componentes globales reutilizables
+|   |   `-- Button.tsx
+|   `-- layout/                  # Navbar, sidebar, wrappers compartidos
+|       |-- NavBar.tsx
+|       `-- Sidebar.tsx
+|-- features/                    # Dominios del negocio (crecimiento)
+|   `-- auth/                    # Ejemplo: hooks/ui/logic de auth
+|-- services/                    # Cliente API y acceso HTTP
+|-- store/                       # Zustand stores
+|-- router/                      # Reglas de redirect
+`-- config/                      # Variables y config runtime
+```
+
 Regla rapida:
 
 - Si se usa en mas de una pagina -> `src/components/`.

@@ -18,6 +18,8 @@ Rama de trabajo: `feature/frontend-next-auth-tokyo`.
 - Se centralizo redirect protegido en `src/app/app/layout.tsx` usando `getProtectedRedirect`.
 - Se evito bootstrap redundante de sesion en login/registro chequeando `isBootstrapped`.
 - Se actualizo `frontend/README.md` con arquitectura hibrida por dominio y reglas para juniors (incluye que NO conviene hacer).
+- Se migraron `NavBar` y `Sidebar` desde `src/layouts/` hacia `src/components/layout/`.
+- Se agrego un diagrama en arbol de carpetas dentro de `frontend/README.md` para visualizar la estructura objetivo.
 - Se actualizo esta bitacora para reflejar el trabajo actual.
 
 ## Commits realizados
@@ -35,6 +37,8 @@ Rama de trabajo: `feature/frontend-next-auth-tokyo`.
 - `frontend/src/app/app/layout.tsx`
 - `frontend/src/components/ui/Button.tsx`
 - `frontend/src/components/layout/README.md`
+- `frontend/src/components/layout/NavBar.tsx`
+- `frontend/src/components/layout/Sidebar.tsx`
 - `frontend/package.json`
 - `frontend/README.md`
 - `README.md`
