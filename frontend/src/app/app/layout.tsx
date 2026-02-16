@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 
 
-export default function Layout({children}:{children:ReactNode} ){
+export default function Layout({ children }: { children: ReactNode }) {
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const router = useRouter();
@@ -32,14 +32,16 @@ export default function Layout({children}:{children:ReactNode} ){
         return null;
     }
 
-    return (<div >
-        <NavBar onOpenMenu={() => setMobileMenuOpen(prev => !prev)}/>
+    return (
+        <div className="min-h-screen">
+            <NavBar onOpenMenu={() => setMobileMenuOpen((prev) => !prev)} />
 
-        <div className="fixed left-0 top-0 h-full flex">
-            <Sidebar mobileOpen={mobileMenuOpen} closeMobile={() => setMobileMenuOpen(false)}/>
-            <div>
-                    {children}  
+            <div className="relative flex w-full">
+                <Sidebar mobileOpen={mobileMenuOpen} closeMobile={() => setMobileMenuOpen(false)} />
+                <main className="w-full min-w-0 flex justify-center items-center">
+                    {children}
+                </main>
             </div>
         </div>
-    </div>);
+    );
 }

@@ -1,5 +1,14 @@
 # Frontend PR Log
 
+## 2026-02-16
+
+### frontend-video-upload-test - home base + UI minima reutilizable
+- Se crea la rama `frontend-video-upload-test` desde `develop` para trabajar la estructura base del home (upload + filtros + resultados) y componentes UI reutilizables.
+- Alcance inicial: `Button`, `Input`, `Card/Panel`, `Loader` y sus skeletons para estados de carga (`empty/loading/error`) en mobile y desktop.
+- Los componentes base se centralizan en `src/components/ui/`; los skeletons especificos de vista se ubican junto a la feature (por ejemplo, `src/components/home/`).
+- Implementado layout base en `/app`: dropzone con click + drag and drop, panel de estado del proyecto y seccion de clips generados con estados `empty/loading/list`.
+- Corregido layout del dashboard para evitar solapamiento del topbar y descentrado del contenido principal (ajustes en `app/layout`, `Sidebar` y ancho/alineacion de `NavBar`/home).
+
 ## 2026-02-15
 
 ### auth/login - manejo de errores y visibilidad de password
