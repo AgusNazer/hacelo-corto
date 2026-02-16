@@ -8,3 +8,9 @@ coverage/
 .DS_Store
 .vscode/
 docs/frontend-pr-log.md
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+venv/
