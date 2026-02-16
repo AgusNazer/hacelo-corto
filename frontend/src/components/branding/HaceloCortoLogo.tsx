@@ -1,6 +1,6 @@
 import { useId } from "react";
 
-type LogoVariant = "icon" | "compact" | "wordmarkMono";
+type LogoVariant = "icon" | "compact" | "wordmark" | "wordmarkMono";
 
 type LogoPalette = {
   gradientAStart: string;
@@ -86,6 +86,49 @@ export function HaceloCortoLogo({
           <circle cx="18" cy="46" r="3" fill="none" strokeWidth="3" />
           <circle cx="46" cy="18" r="3" fill="none" strokeWidth="3" />
         </g>
+
+        <text
+          x="72"
+          y="38"
+          fontFamily="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial"
+          fontSize="26"
+          fontWeight="800"
+          letterSpacing="-0.4"
+          fill="currentColor"
+        >
+          Hacelo Corto
+        </text>
+      </svg>
+    );
+  }
+
+  if (variant === "wordmark") {
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 260 64"
+        role="img"
+        aria-label={title}
+        className={className}
+      >
+        <defs>
+          <linearGradient id={gradientA} x1="10" y1="10" x2="54" y2="54" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor={color.gradientAStart} />
+            <stop offset="0.55" stopColor={color.gradientAMid} />
+            <stop offset="1" stopColor={color.gradientAEnd} />
+          </linearGradient>
+          <linearGradient id={gradientB} x1="58" y1="6" x2="6" y2="58" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor={color.gradientBStart} />
+            <stop offset="0.55" stopColor={color.gradientBMid} />
+            <stop offset="1" stopColor={color.gradientBEnd} />
+          </linearGradient>
+        </defs>
+
+        <circle cx="32" cy="32" r="22" fill="none" stroke={`url(#${gradientA})`} strokeWidth="4" />
+        <path d="M30 22 L30 42 L44 32 Z" fill={`url(#${gradientB})`} />
+        <path d="M18 46 L46 18" stroke={`url(#${gradientA})`} strokeWidth="3.5" strokeLinecap="round" />
+        <circle cx="18" cy="46" r="3" fill={color.nodeFill} stroke={`url(#${gradientB})`} strokeWidth="2.4" />
+        <circle cx="46" cy="18" r="3" fill={color.nodeFill} stroke={`url(#${gradientB})`} strokeWidth="2.4" />
 
         <text
           x="72"

@@ -41,7 +41,12 @@ export default function NavBar({ onOpenMenu }: TopbarProps){
             <Link href="/" className="inline-flex items-center" aria-label="Ir al home">
               <HaceloCortoLogo
                 variant="compact"
-                className="h-8 w-auto text-white sm:h-9"
+                className="h-8 w-auto text-white lg:hidden sm:h-9"
+                title="Hacelo Corto"
+              />
+              <HaceloCortoLogo
+                variant="wordmark"
+                className="hidden h-8 w-auto text-white lg:block"
                 title="Hacelo Corto"
               />
             </Link>
