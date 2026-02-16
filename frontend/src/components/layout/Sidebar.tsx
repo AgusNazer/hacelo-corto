@@ -25,8 +25,8 @@ export function Sidebar({ mobileOpen, closeMobile }: SidebarProps) {
         onClick={closeMobile}
       />
       <aside
-        className={`fixed left-0 top-0 z-40 h-full w-72 border-r border-white/10 bg-night-900/90 p-5 backdrop-blur-xl transition-transform md:sticky md:z-20 md:translate-x-0 ${
-        mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed left-0 top-0 z-40 h-full w-72 border-r border-white/10 bg-night-900/90 p-5 backdrop-blur-xl transition-transform md:sticky md:top-[73px] md:z-20 md:h-[calc(100vh-73px)] md:translate-x-0 ${
+         mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <div className="flex items-center justify-between md:justify-start">
           <p className="font-display text-lg tracking-wide text-white">HACELO CORTO</p>

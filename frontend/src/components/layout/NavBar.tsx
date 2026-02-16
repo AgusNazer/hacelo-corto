@@ -23,8 +23,8 @@ export default function NavBar({ onOpenMenu }: TopbarProps){
     const userEmail = user?.email ?? "sin-correo";
 
     return(
-    <header className=" top-0 z-10 sticky border-b bg-night-900/60 border-white/10 px-4 py-3 backdrop-blur-xl sm:px-6">
-        <div className='flex mx-auto max-w-7xl items-center gap-3 justify-between'>
+    <header className="sticky top-0 z-30 border-b border-white/10 bg-night-900/60 px-4 py-3 backdrop-blur-xl sm:px-6">
+        <div className='flex w-full items-center justify-between gap-3'>
             <div className="flex items-center gap-3">
             <button
             className=""

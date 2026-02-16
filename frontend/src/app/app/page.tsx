@@ -29,7 +29,7 @@ export default function AppHomePage() {
   };
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+    <section className="w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="grid gap-5 xl:grid-cols-[1.55fr_0.95fr]">
         <Panel variant="accent" className="p-4 sm:p-5">
           <UploadDropzone
