@@ -5,7 +5,7 @@ from app.models.base import UUIDAsPrimaryKeyMixin, TimestampMixin
 
 
 class Video(Base, UUIDAsPrimaryKeyMixin, TimestampMixin):
-    __tablename__ = "video"
+    __tablename__ = "videos"
 
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     original_filename = Column(String(255), nullable=False)
