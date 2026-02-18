@@ -7,6 +7,7 @@ type ProjectStatusPanelProps = {
   isUploading: boolean;
   uploadError: string | null;
   videoId: string | null;
+  videoPreviewUrl: string | null;
   downloadUrl: string | null;
   isResolvingDownloadUrl: boolean;
   downloadError: string | null;
@@ -18,6 +19,7 @@ export function ProjectStatusPanel({
   isUploading,
   uploadError,
   videoId,
+  videoPreviewUrl,
   downloadUrl,
   isResolvingDownloadUrl,
   downloadError,
@@ -25,6 +27,7 @@ export function ProjectStatusPanel({
 }: ProjectStatusPanelProps) {
   const status = uploadError ? "Error de carga" : isUploading ? "Procesando" : hasVideo ? "Video cargado" : "Sin video";
   const progress = isUploading ? 45 : hasVideo ? 100 : 0;
+  const showPreview = Boolean(videoPreviewUrl && hasVideo && !isUploading);
 
   return (
     <section>
@@ -38,18 +41,36 @@ export function ProjectStatusPanel({
         </span> */}
       </div>
 
-      <div className="mt-4 rounded-xl border border-white/15 bg-white/5 p-3">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-white/80">Progreso</span>
-          <span className="text-white">{progress}%</span>
+      {showPreview ? (
+        <div className="mt-4 rounded-xl border border-white/15 bg-white/5 p-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-white/80">Preview del video</span>
+            <span className="text-neon-mint">Listo</span>
+          </div>
+
+          <div className="mt-2 overflow-hidden rounded-lg border border-white/15 bg-black/40">
+            <video
+              controls
+              preload="metadata"
+              className="max-h-44 w-full object-contain"
+              src={videoPreviewUrl ?? undefined}
+            />
+          </div>
         </div>
-        <div className="mt-2 h-2 rounded-full bg-night-950/90">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-neon-cyan to-neon-violet transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
+      ) : (
+        <div className="mt-4 rounded-xl border border-white/15 bg-white/5 p-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-white/80">Progreso</span>
+            <span className="text-white">{progress}%</span>
+          </div>
+          <div className="mt-2 h-2 rounded-full bg-night-950/90">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-neon-cyan to-neon-violet transition-all duration-500"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <ul className="mt-4 space-y-2 text-sm text-white/80">
         <li className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">Upload recibido</li>

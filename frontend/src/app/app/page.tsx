@@ -6,7 +6,7 @@ import { UploadDropzone } from "@/src/components/home/UploadDropzone";
 import { Panel } from "@/src/components/ui/Panel";
 import { VideoApiError, type VideoUploadResponse, type VideoUrlResponse, videoApi } from "@/src/services/videoApi";
 import { useAuthStore } from "@/src/store/useAuthStore";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const mockClips: Clip[] = [
   { id: "clip-1", title: "Hook inicial", duration: "00:31", preset: "Impact", status: "listo" },
@@ -43,6 +43,7 @@ export default function AppHomePage() {
   const token = useAuthStore((state) => state.token);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedVideo, setUploadedVideo] = useState<VideoUploadResponse | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [downloadData, setDownloadData] = useState<VideoUrlResponse | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -51,7 +52,17 @@ export default function AppHomePage() {
   const hasVideo = Boolean(uploadedVideo);
   const visibleClips = useMemo(() => (hasVideo && !isUploading ? mockClips : []), [hasVideo, isUploading]);
 
+  useEffect(() => {
+    return () => {
+      if (videoPreviewUrl) {
+        URL.revokeObjectURL(videoPreviewUrl);
+      }
+    };
+  }, [videoPreviewUrl]);
+
   const handleUpload = async (file: File) => {
+    const localPreviewUrl = URL.createObjectURL(file);
+
     setIsUploading(true);
     setUploadedVideo(null);
     setUploadError(null);
@@ -61,7 +72,15 @@ export default function AppHomePage() {
     try {
       const uploaded = await videoApi.upload(file, token);
       setUploadedVideo(uploaded);
+      setVideoPreviewUrl((prev) => {
+        if (prev) {
+          URL.revokeObjectURL(prev);
+        }
+        return localPreviewUrl;
+      });
     } catch (error) {
+      URL.revokeObjectURL(localPreviewUrl);
+      setVideoPreviewUrl(null);
       setUploadError(normalizeVideoError(error, "No pudimos subir el video."));
     } finally {
       setIsUploading(false);
@@ -103,6 +122,7 @@ export default function AppHomePage() {
             isUploading={isUploading}
             uploadError={uploadError}
             videoId={uploadedVideo?.video_id ?? null}
+            videoPreviewUrl={videoPreviewUrl}
             downloadUrl={downloadData?.url ?? null}
             isResolvingDownloadUrl={isResolvingDownloadUrl}
             downloadError={downloadError}
