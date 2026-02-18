@@ -1,6 +1,6 @@
 import { Loader } from "@/src/components/ui/Loader";
 import { Button } from "@/src/components/ui/Button";
-import { VideoSettingsModal } from "@/src/components/home/VideoSettingsModal";
+// import { VideoSettingsModal } from "@/src/components/home/VideoSettingsModal";
 
 type ProjectStatusPanelProps = {
   hasVideo: boolean;
@@ -48,14 +48,14 @@ export function ProjectStatusPanel({
             <span className="text-neon-mint">Listo</span>
           </div>
 
-          <div className="mt-2 overflow-hidden rounded-lg border border-white/15 bg-black/40">
+          {/* <div className="mt-2 overflow-hidden rounded-lg border border-white/15 bg-black/40">
             <video
               controls
               preload="metadata"
               className="max-h-44 w-full object-contain"
               src={videoPreviewUrl ?? undefined}
             />
-          </div>
+          </div> */}
         </div>
       ) : (
         <div className="mt-4 rounded-xl border border-white/15 bg-white/5 p-3">
@@ -78,7 +78,7 @@ export function ProjectStatusPanel({
         <li className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">Generacion de clips</li>
       </ul>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <VideoSettingsModal />
+        {/* <VideoSettingsModal /> */}
         <Button
           variant="neutral"
           className="h-10 w-auto px-4"

@@ -34,7 +34,9 @@ export default function Layout({ children }: { children: ReactNode }) {
 
     return (
         <div className="min-h-screen">
-            <NavBar onOpenMenu={() => setMobileMenuOpen((prev) => !prev)} />
+            <NavBar 
+            onOpenMenu={() => setMobileMenuOpen((prev) => !prev)} 
+            />
 
             <div className="relative flex w-full">
                 <Sidebar mobileOpen={mobileMenuOpen} closeMobile={() => setMobileMenuOpen(false)} />

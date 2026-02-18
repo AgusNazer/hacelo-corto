@@ -1,4 +1,5 @@
 import { Skeleton } from "@/src/components/ui/Skeleton";
+import Link from "next/link";
 
 type Clip = {
   id: string;
@@ -40,7 +41,7 @@ export function GeneratedClipsSection({ clips, showLoading }: GeneratedClipsSect
           Todavia no hay clips generados. Subi un video para empezar.
         </div>
       ) : (
-        <div className="mt-5 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(14rem,1fr))]">
+        <Link  href="/app/shortDetails" className="mt-5 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(14rem,1fr))]">
           {clips.map((clip) => (
             <article
               key={clip.id}
@@ -62,7 +63,7 @@ export function GeneratedClipsSection({ clips, showLoading }: GeneratedClipsSect
               <p className="mt-2 rounded-lg border border-white/15 px-2 py-1 text-xs text-white/80">Preset: {clip.preset}</p>
             </article>
           ))}
-        </div>
+        </Link>
       )}
     </section>
   );
