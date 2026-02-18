@@ -95,3 +95,23 @@ Ejecutado en `frontend/`:
 - `npm run lint` -> OK
 - `npm run test` -> OK (9 tests)
 - `npm run build` -> OK
+
+## Actualizacion 2026-02-18 (biblioteca de clips UI)
+
+- Rama de trabajo: `feat/clips-library-ui`.
+- Se creo la nueva pantalla `frontend/src/app/app/library/page.tsx` con una biblioteca de clips mock (sin endpoints) alineada al estilo neon/night del dashboard.
+- Se agrego un hero de biblioteca con atmosfera visual (gradientes y glow), buscador, CTA de filtros y accion destacada para futura seleccion IA.
+- Se implemento una grilla responsive de cards de clip con estados (`listo`, `revision`, `render`), duracion, ratio, preset y acciones de UI (`Descargar`, `Ver detalles`).
+- Se incorporaron animaciones de entrada y hover usando clases existentes (`animate-fade-up`, `animate-drift`) para mantener consistencia visual.
+- Se actualizo `frontend/src/components/layout/Sidebar.tsx` para navegar con `Link` de Next.js y resolver correctamente el estado activo por ruta.
+
+### Commits realizados (rama actual)
+
+- `feat(frontend): add clips library page with animated cards`
+- `docs(frontend): update PR log for clips library`
+
+### Validaciones locales (rama actual)
+
+Ejecutado en `frontend/`:
+
+- `npm run lint` -> OK
