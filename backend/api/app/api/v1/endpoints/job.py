@@ -9,7 +9,7 @@ from app.services.queue_service import QueueService
 from app.models.user import User
 from app.services.job_service import JobService
 from app.services.dependencies import get_job_service
-from app.schemas.job import JobReframeResponse, JobStatusResponse
+from app.schemas.job import JobReframeResponse, JobStatusResponse, JobReframeRequest
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
@@ -29,13 +29,16 @@ router = APIRouter(prefix="/jobs", tags=["Jobs"])
 )
 async def reframe_video(
     video_id: Annotated[UUID, Path(description="ID del Video")],
+    body: JobReframeRequest,
     current_user: Annotated[User, Depends(get_current_active_user)],
     service: Annotated[JobService, Depends(get_job_service)]
 ) -> JobReframeResponse:
     """Crea un nuevo Job de REFRAME para el video subido (requiere autenticación)"""
     return service.reframe_video(
         video_id=video_id,
-        user_id=current_user.id
+        user_id=current_user.id,
+        start_sec=body.start_sec,
+        end_sec=body.end_sec
     )
 
 @router.get(
