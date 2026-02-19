@@ -10,7 +10,9 @@ interface TopbarProps {
 }
 
 
-export default function NavBar({ onOpenMenu }: TopbarProps){
+export default function NavBar(
+  { onOpenMenu }: TopbarProps
+){
     const logout = useAuthStore((state) => state.logout);
     const user = useAuthStore((state) => state.user);
     const isLoading = useAuthStore((state) => state.isLoading);

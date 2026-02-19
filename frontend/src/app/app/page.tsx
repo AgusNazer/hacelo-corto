@@ -3,6 +3,8 @@
 import { GeneratedClipsSection, type Clip } from "@/src/components/home/GeneratedClipsSection";
 import { ProjectStatusPanel } from "@/src/components/home/ProjectStatusPanel";
 import { UploadDropzone } from "@/src/components/home/UploadDropzone";
+import { VideoPreview } from "@/src/components/home/videoPrevewTimeLine/VideoPreview";
+import { VideoSettings } from "@/src/components/home/VideoSettings";
 import { Panel } from "@/src/components/ui/Panel";
 import { VideoApiError, type VideoUploadResponse, type VideoUrlResponse, videoApi } from "@/src/services/videoApi";
 import { useAuthStore } from "@/src/store/useAuthStore";
@@ -104,7 +106,7 @@ export default function AppHomePage() {
       setIsResolvingDownloadUrl(false);
     }
   };
-
+const showPreview = Boolean(videoPreviewUrl && hasVideo && !isUploading);
   return (
     <section className="w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="grid gap-5 xl:grid-cols-[1.55fr_0.95fr]">
@@ -130,7 +132,20 @@ export default function AppHomePage() {
           />
         </Panel>
       </div>
+      {showPreview &&(<div className="flex flex-col lg:flex-row gap-5 mt-5">
+        <Panel >
+          <VideoPreview videoPreviewUrl={videoPreviewUrl}
+          onTrimChange={(start, end) => {
+        console.log("Enviar al backend:", { start, end });
+      }}
+          />
+        </Panel>
+        <Panel>
+          <VideoSettings />
+        </Panel>
 
+      </div>)}
+      
       <Panel className="mt-5">
         <GeneratedClipsSection clips={visibleClips} showLoading={isUploading} />
       </Panel>
