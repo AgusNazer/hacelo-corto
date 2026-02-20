@@ -15,6 +15,7 @@ Conectar el flujo de login/registro del frontend con Google OAuth del backend y 
 - Se incorporo `completeGoogleAuth` en `frontend/src/store/useAuthStore.ts` para cerrar sesion local de forma consistente con login/register por email.
 - Se creo la pantalla `frontend/src/app/auth/callback/page.tsx` para validar `code/state`, ejecutar el callback contra backend y redirigir a `/app` al autenticar.
 - Se corrigio la pantalla de callback para evitar falsos negativos de `state invalido` en desarrollo (doble ejecucion de efectos por `reactStrictMode`) procesando cada `code` una sola vez y limpiando `sessionStorage` al finalizar autenticacion.
+- Se ajusto la ruta `auth/callback` para produccion (Next 16): se separo en componente cliente + `Suspense` en `page.tsx`, evitando el error de build por `useSearchParams()` fuera de boundary.
 
 ### Commits de esta rama (frontend)
 
