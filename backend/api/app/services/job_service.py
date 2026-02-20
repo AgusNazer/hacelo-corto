@@ -1,111 +1,91 @@
-from uuid import UUID, uuid4
-from datetime import datetime
-from venv import logger
-from app.core.config import settings
+from uuid import UUID
+import re
+import subprocess
 from sqlalchemy.orm import Session
 from app.models.job import Job, JobStatus, JobType
 from app.models.video import Video
-from app.schemas.job import JobReframeResponse, JobStatusResponse
+from app.schemas.job import (
+    JobReframeResponse,
+    JobStatusResponse,
+    JobAutoReframeResponse,
+    JobAutoReframeItem,
+    UserClipsResponse,
+    UserClipItem,
+)
 from app.services.queue_service import QueueService
+from app.services.video_worker_service import VideoWorkerService
+from app.core.logging import setup_logging
 from app.utils.exceptions import (
     JobParameterException,
     NotFoundException,
 )
 
+logger = setup_logging()
+
 
 class JobService:
     """Servicio de Jobs - Persiste un Job, luego envia mensaje a Redis"""
-    
+
     def __init__(self, db: Session, queue: QueueService):
         self.db = db
         self.queue = queue
-    
 
     def get_job_status(self, job_id: UUID, user_id: UUID) -> JobStatusResponse:
         job = (
-        self.db.query(Job)
-        .filter(
-            Job.id == job_id,
-            Job.user_id == user_id
-        )
-        .first()
+            self.db.query(Job).filter(Job.id == job_id, Job.user_id == user_id).first()
         )
 
         if not job:
             raise NotFoundException("Job Not found")
 
         return JobStatusResponse(
-            job_id=job.id,
-            status=job.status,
-            output_path=job.output_path
+            job_id=job.id, status=job.status, output_path=job.output_path
         )
-    
-    
-    def reframe_video(self, video_id: UUID, user_id: UUID, start_sec: int, end_sec: int) -> JobReframeResponse:
+
+    def _get_user_video(self, video_id: UUID, user_id: UUID) -> Video:
         video = (
             self.db.query(Video)
-            .filter(
-                Video.id == video_id,
-                Video.user_id == user_id
-            )
+            .filter(Video.id == video_id, Video.user_id == user_id)
             .first()
         )
 
         if not video:
-            raise NotFoundException("Video not found"
-            )
-        
-        # ...TODO, tabla videos no guarda duracion?
-        # validar que start y end sec sean coherentes con la duracion del video
-        #video_total_sec = video.duration_seconds
-        #if video_total_sec is None:
-        #    raise JobParameterException("Video duration not available")
-        #if start_sec < 0 or start_sec > video_total_sec or end_sec > video_total_sec:
-        #    raise JobParameterException()
+            raise NotFoundException("Video not found")
+
+        return video
+
+    def _validate_time_range(self, start_sec: int, end_sec: int) -> None:
         if start_sec < 0 or start_sec > end_sec:
             raise JobParameterException()
 
-        # validar que no exista ya un job PENDING/RUNNING/FAILED para ese video_id
-        existing_job = (
-            self.db.query(Job)
-            .filter(
-                Job.video_id == video_id,
-                Job.status.in_([JobStatus.PENDING, JobStatus.RUNNING, JobStatus.FAILED])
+    def _create_reframe_job(
+        self,
+        *,
+        video: Video,
+        user_id: UUID,
+        start_sec: int,
+        end_sec: int,
+        allow_reuse: bool,
+    ) -> JobReframeResponse:
+        self._validate_time_range(start_sec, end_sec)
+
+        existing_job = None
+        if allow_reuse:
+            existing_job = (
+                self.db.query(Job)
+                .filter(
+                    Job.video_id == video.id,
+                    Job.status.in_(
+                        [JobStatus.PENDING, JobStatus.RUNNING, JobStatus.FAILED]
+                    ),
+                )
+                .first()
             )
-            .first()
-        )
 
-        if existing_job:
-            if existing_job.status == JobStatus.RUNNING:
-                logger.info(f"Existing job {existing_job.id} is already {existing_job.status}")
-                return JobReframeResponse(
-                    job_id=existing_job.id,
-                    job_type=existing_job.job_type,
-                    status=existing_job.status,
-                    filename=video.original_filename,
-                    start_sec=start_sec,
-                    end_sec=end_sec,
-                    created_at=existing_job.created_at
-                )
-
-        if existing_job:
-            logger.info(f"Existing job {existing_job.id} found for video {video_id} with status {existing_job.status}, reusing it")
-            # republicar a Redis
-            try:
-                self.queue.publish_reframe_job(
-                    job_id=str(existing_job.id),
-                    video_id=str(video_id),
-                    user_id=str(user_id),
-                    start_sec=start_sec,
-                    end_sec=end_sec,
-                )
-            except Exception as e:
-                # Si falla Redis, dejamos el job en FAILED
-                existing_job.status = JobStatus.FAILED
-                existing_job.error_message = "Error enviando job a la cola"
-                self.db.commit()
-                raise e
-    
+        if existing_job and existing_job.status == JobStatus.RUNNING:
+            logger.info(
+                f"Existing job {existing_job.id} is already {existing_job.status}"
+            )
             return JobReframeResponse(
                 job_id=existing_job.id,
                 job_type=existing_job.job_type,
@@ -113,32 +93,57 @@ class JobService:
                 filename=video.original_filename,
                 start_sec=start_sec,
                 end_sec=end_sec,
-                created_at=existing_job.created_at
+                created_at=existing_job.created_at,
             )
 
-        # crear Job en DB
+        if existing_job:
+            logger.info(
+                f"Existing job {existing_job.id} found for video {video.id} with status {existing_job.status}, reusing it"
+            )
+            try:
+                self.queue.publish_reframe_job(
+                    job_id=str(existing_job.id),
+                    video_id=str(video.id),
+                    user_id=str(user_id),
+                    start_sec=start_sec,
+                    end_sec=end_sec,
+                )
+            except Exception as e:
+                existing_job.status = JobStatus.FAILED
+                existing_job.error_message = "Error enviando job a la cola"
+                self.db.commit()
+                raise e
+
+            return JobReframeResponse(
+                job_id=existing_job.id,
+                job_type=existing_job.job_type,
+                status=existing_job.status,
+                filename=video.original_filename,
+                start_sec=start_sec,
+                end_sec=end_sec,
+                created_at=existing_job.created_at,
+            )
+
         job = Job(
             user_id=user_id,
-            video_id=video_id,
+            video_id=video.id,
             job_type=JobType.REFRAME,
-            status=JobStatus.PENDING
+            status=JobStatus.PENDING,
         )
 
         self.db.add(job)
-        self.db.commit()        # persistir primero
-        self.db.refresh(job)    # refresh para obtener ID generado
+        self.db.commit()
+        self.db.refresh(job)
 
-        # enviar a Redis (después del commit) ! Idealmente solo enviariamos el jobId
         try:
             self.queue.publish_reframe_job(
                 job_id=str(job.id),
-                video_id=str(video_id),
+                video_id=str(video.id),
                 user_id=str(user_id),
                 start_sec=start_sec,
                 end_sec=end_sec,
             )
         except Exception as e:
-            # Si falla Redis, dejamos el job en FAILED
             job.status = JobStatus.FAILED
             job.error_message = "Error enviando job a la cola"
             self.db.commit()
@@ -151,5 +156,236 @@ class JobService:
             filename=video.original_filename,
             start_sec=start_sec,
             end_sec=end_sec,
-            created_at=job.created_at
+            created_at=job.created_at,
         )
+
+    def _build_auto_clip_ranges(
+        self, video: Video, clips_count: int, clip_duration_sec: int
+    ) -> tuple[list[tuple[int, int]], int | None]:
+        duration = self._resolve_video_duration(video)
+
+        if not duration or duration <= 0:
+            starts = [i * clip_duration_sec for i in range(clips_count)]
+            return ([(start, start + clip_duration_sec) for start in starts], None)
+
+        safe_clip_duration = min(clip_duration_sec, max(5, duration))
+        max_start = max(duration - safe_clip_duration, 0)
+        source_url = self._get_source_url(video)
+
+        if not source_url:
+            starts = self._distributed_starts(max_start, clips_count)
+            ranges = [
+                (start, min(start + safe_clip_duration, duration)) for start in starts
+            ]
+            return (ranges, duration)
+
+        highlights = self._extract_nonsilent_segments(source_url, duration)
+        starts: list[int] = []
+        min_gap = max(1, safe_clip_duration // 2)
+
+        if highlights:
+            scored = sorted(highlights, key=lambda seg: seg[1] - seg[0], reverse=True)
+            for start_h, end_h in scored:
+                center = (start_h + end_h) / 2
+                start = int(round(center - (safe_clip_duration / 2)))
+                start = max(0, min(max_start, start))
+                if all(abs(start - existing) >= min_gap for existing in starts):
+                    starts.append(start)
+                if len(starts) >= clips_count:
+                    break
+
+        if len(starts) < clips_count:
+            for extra in self._distributed_starts(max_start, clips_count):
+                if all(abs(extra - existing) >= min_gap for existing in starts):
+                    starts.append(extra)
+                if len(starts) >= clips_count:
+                    break
+
+        unique_sorted = sorted(set(starts))[:clips_count]
+        ranges = [
+            (start, min(start + safe_clip_duration, duration))
+            for start in unique_sorted
+        ]
+        return (ranges, duration)
+
+    def _distributed_starts(self, max_start: int, clips_count: int) -> list[int]:
+        if clips_count <= 1:
+            return [max_start // 2]
+        if max_start <= 0:
+            return [0 for _ in range(clips_count)]
+        intro_offset = int(max_start * 0.08)
+        usable_max = max(int(max_start * 0.92), intro_offset)
+        return [
+            round(intro_offset + ((usable_max - intro_offset) * i) / (clips_count - 1))
+            for i in range(clips_count)
+        ]
+
+    def _get_source_url(self, video: Video) -> str | None:
+        if not video.storage_path:
+            return None
+        try:
+            return VideoWorkerService().get_video_url(
+                video.storage_path, expires_in=600
+            )
+        except Exception as exc:
+            logger.warning(f"No se pudo generar URL temporal para analisis: {exc}")
+            return None
+
+    def _resolve_video_duration(self, video: Video) -> int | None:
+        if video.duration_seconds and video.duration_seconds > 0:
+            return int(video.duration_seconds)
+        source_url = self._get_source_url(video)
+        if not source_url:
+            return None
+        return self._probe_duration_seconds(source_url)
+
+    def _probe_duration_seconds(self, source_url: str) -> int | None:
+        try:
+            cmd = [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                source_url,
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            raw = result.stdout.strip()
+            if not raw:
+                return None
+            return max(1, int(float(raw)))
+        except Exception as exc:
+            logger.warning(f"No se pudo obtener duracion con ffprobe: {exc}")
+            return None
+
+    def _extract_nonsilent_segments(
+        self, source_url: str, duration_sec: int
+    ) -> list[tuple[int, int]]:
+        try:
+            cmd = [
+                "ffmpeg",
+                "-hide_banner",
+                "-i",
+                source_url,
+                "-af",
+                "silencedetect=noise=-30dB:d=0.35",
+                "-f",
+                "null",
+                "-",
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            output = f"{result.stdout}\n{result.stderr}"
+
+            nonsilent_segments: list[tuple[int, int]] = []
+            active_start = 0.0
+            min_segment_len = 1.5
+
+            for line in output.splitlines():
+                match_start = re.search(r"silence_start:\s*([0-9]+(?:\.[0-9]+)?)", line)
+                if match_start:
+                    silence_start = float(match_start.group(1))
+                    if silence_start - active_start >= min_segment_len:
+                        nonsilent_segments.append(
+                            (int(active_start), int(min(silence_start, duration_sec)))
+                        )
+                    continue
+
+                match_end = re.search(r"silence_end:\s*([0-9]+(?:\.[0-9]+)?)", line)
+                if match_end:
+                    active_start = float(match_end.group(1))
+
+            if duration_sec - active_start >= min_segment_len:
+                nonsilent_segments.append((int(active_start), int(duration_sec)))
+
+            cleaned = [seg for seg in nonsilent_segments if seg[1] > seg[0]]
+            return cleaned
+        except Exception as exc:
+            logger.warning(f"No se pudo analizar silencios para highlights: {exc}")
+            return []
+
+    def reframe_video(
+        self, video_id: UUID, user_id: UUID, start_sec: int, end_sec: int
+    ) -> JobReframeResponse:
+        video = self._get_user_video(video_id, user_id)
+
+        return self._create_reframe_job(
+            video=video,
+            user_id=user_id,
+            start_sec=start_sec,
+            end_sec=end_sec,
+            allow_reuse=True,
+        )
+
+    def auto_reframe_video(
+        self,
+        video_id: UUID,
+        user_id: UUID,
+        clips_count: int,
+        clip_duration_sec: int,
+    ) -> JobAutoReframeResponse:
+        video = self._get_user_video(video_id, user_id)
+        clip_ranges, used_duration = self._build_auto_clip_ranges(
+            video, clips_count, clip_duration_sec
+        )
+
+        created_jobs: list[JobAutoReframeItem] = []
+        for start_sec, end_sec in clip_ranges:
+            job_response = self._create_reframe_job(
+                video=video,
+                user_id=user_id,
+                start_sec=start_sec,
+                end_sec=end_sec,
+                allow_reuse=False,
+            )
+            created_jobs.append(
+                JobAutoReframeItem(
+                    job_id=job_response.job_id,
+                    job_type=job_response.job_type,
+                    status=job_response.status,
+                    start_sec=job_response.start_sec,
+                    end_sec=job_response.end_sec,
+                    created_at=job_response.created_at,
+                )
+            )
+
+        return JobAutoReframeResponse(
+            video_id=video.id,
+            total_jobs=len(created_jobs),
+            clip_duration_sec=clip_duration_sec,
+            used_video_duration_sec=used_duration,
+            jobs=created_jobs,
+        )
+
+    def list_user_clips(
+        self, user_id: UUID, limit: int = 20, offset: int = 0
+    ) -> UserClipsResponse:
+        base_query = (
+            self.db.query(Job, Video)
+            .join(Video, Video.id == Job.video_id)
+            .filter(
+                Job.user_id == user_id,
+                Job.job_type == JobType.REFRAME,
+                Job.output_path.isnot(None),
+            )
+        )
+
+        total = base_query.count()
+        rows = (
+            base_query.order_by(Job.created_at.desc()).offset(offset).limit(limit).all()
+        )
+
+        clips = [
+            UserClipItem(
+                job_id=job.id,
+                video_id=job.video_id,
+                status=job.status,
+                output_path=job.output_path,
+                source_filename=video.original_filename,
+                created_at=job.created_at,
+            )
+            for job, video in rows
+        ]
+
+        return UserClipsResponse(total=total, limit=limit, offset=offset, clips=clips)
