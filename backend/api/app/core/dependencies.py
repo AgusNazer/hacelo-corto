@@ -1,4 +1,5 @@
 from typing import Annotated
+from uuid import UUID
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
@@ -28,7 +29,16 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
     
-    user = db.query(User).filter(User.id == token_data.sub).first()
+    user = None
+    
+    # Intentar buscar por UUID (caso normal: sub = user.id)
+    try:
+        subject_as_uuid = UUID(token_data.sub)
+        user = db.query(User).filter(User.id == subject_as_uuid).first()
+    except (ValueError, TypeError):
+        # Fallback: buscar por email (tokens antiguos con sub = email)
+        user = db.query(User).filter(User.email == token_data.sub).first()
+    
     if user is None:
         raise credentials_exception
     

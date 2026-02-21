@@ -196,8 +196,8 @@ class GoogleOAuthService:
         # 3. Crear/actualizar usuario en DB
         user = self.get_or_create_user(google_user)
         
-        # 4. Generar nuestro propio JWT
-        jwt_token = create_access_token(subject=user.email)
+        # 4. Generar nuestro propio JWT (usar UUID como subject)
+        jwt_token = create_access_token(subject=str(user.id))
         
         return {
             "access_token": jwt_token,
