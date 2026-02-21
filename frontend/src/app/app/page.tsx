@@ -8,6 +8,8 @@ import { VideoApiError, type AutoReframeJobItem, type VideoUploadResponse, video
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useEffect, useMemo, useState } from "react";
 
+const HOME_DRAFT_KEY = "home:uploaded-video-draft";
+
 function toTimeLabel(seconds: number) {
   const min = Math.floor(seconds / 60)
     .toString()
@@ -40,14 +42,19 @@ function mapJobsToClips(
     const status = statusInfo?.status ?? job.status;
 
     return {
-    id: job.job_id,
-    title: `Clip ${index + 1}`,
-    duration: toTimeLabel(Math.max(job.end_sec - job.start_sec, 0)),
-    preset: "Auto Reframe",
-    status: mapJobStatusToClipStatus(status),
-    previewUrl: statusInfo?.outputPath ?? null
-  };
+      id: job.job_id,
+      title: `Clip ${index + 1}`,
+      duration: toTimeLabel(Math.max(job.end_sec - job.start_sec, 0)),
+      preset: "Auto Reframe",
+      status: mapJobStatusToClipStatus(status),
+      previewUrl: statusInfo?.outputPath ?? null
+    };
   });
+}
+
+function isTerminalStatus(status: string) {
+  const normalized = status.toLowerCase();
+  return normalized === "done" || normalized === "completed" || normalized === "failed" || normalized === "error";
 }
 
 function normalizeVideoError(error: unknown, fallbackMessage: string) {
@@ -90,6 +97,48 @@ export default function AppHomePage() {
   const visibleClips = useMemo(() => mapJobsToClips(createdJobs, jobStatusMap), [createdJobs, jobStatusMap]);
 
   useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(HOME_DRAFT_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as {
+        uploadedVideo: VideoUploadResponse | null;
+        createdJobs: AutoReframeJobItem[];
+        autoJobCount: number;
+      };
+
+      if (parsed.uploadedVideo) {
+        setUploadedVideo(parsed.uploadedVideo);
+      }
+      if (Array.isArray(parsed.createdJobs)) {
+        setCreatedJobs(parsed.createdJobs);
+      }
+      if (typeof parsed.autoJobCount === "number") {
+        setAutoJobCount(parsed.autoJobCount);
+      }
+    } catch {
+      window.localStorage.removeItem(HOME_DRAFT_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!uploadedVideo) {
+      window.localStorage.removeItem(HOME_DRAFT_KEY);
+      return;
+    }
+
+    const payload = {
+      uploadedVideo,
+      createdJobs,
+      autoJobCount
+    };
+
+    window.localStorage.setItem(HOME_DRAFT_KEY, JSON.stringify(payload));
+  }, [uploadedVideo, createdJobs, autoJobCount]);
+
+  useEffect(() => {
     if (!token || createdJobs.length === 0) {
       return;
     }
@@ -103,15 +152,32 @@ export default function AppHomePage() {
           return;
         }
 
-        const nextMap: Record<string, { status: string; outputPath: string | null }> = {};
-        statuses.forEach((item) => {
-          nextMap[item.job_id] = {
-            status: item.status,
-            outputPath: item.output_path
-          };
+        let shouldContinuePolling = false;
+
+        setJobStatusMap((prev) => {
+          const nextMap: Record<string, { status: string; outputPath: string | null }> = {};
+
+          statuses.forEach((item) => {
+            const previous = prev[item.job_id];
+            const stableOutputPath = previous?.outputPath ?? item.output_path ?? null;
+            nextMap[item.job_id] = {
+              status: item.status,
+              outputPath: stableOutputPath
+            };
+
+            const waitingForOutput = !stableOutputPath && (item.status.toLowerCase() === "done" || item.status.toLowerCase() === "completed");
+            if (!isTerminalStatus(item.status) || waitingForOutput) {
+              shouldContinuePolling = true;
+            }
+          });
+
+          const hasDiff = JSON.stringify(prev) !== JSON.stringify(nextMap);
+          return hasDiff ? nextMap : prev;
         });
 
-        setJobStatusMap(nextMap);
+        if (!shouldContinuePolling) {
+          window.clearInterval(intervalId);
+        }
       } catch {
         if (!cancelled) {
           setJobError((prev) => prev ?? "No pudimos actualizar el estado de algunos clips generados.");
@@ -119,10 +185,10 @@ export default function AppHomePage() {
       }
     };
 
-    void syncStatuses();
     const intervalId = window.setInterval(() => {
       void syncStatuses();
     }, 6000);
+    void syncStatuses();
 
     return () => {
       cancelled = true;
@@ -139,6 +205,7 @@ export default function AppHomePage() {
     setAutoJobCount(0);
     setUploadError(null);
     setJobError(null);
+    window.localStorage.removeItem(HOME_DRAFT_KEY);
 
     let uploaded: VideoUploadResponse;
 
