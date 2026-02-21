@@ -1,12 +1,13 @@
 "use client";
 
 import { Panel } from "@/src/components/ui/Panel";
-import { videoApi, type UserClipItem } from "@/src/services/videoApi";
+import { videoApi, type UserClipItem, type UserVideoItem } from "@/src/services/videoApi";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { Clock3, Download, Search, Tag } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const PAGE_SIZE = 12;
+type LibraryView = "clips" | "videos";
 
 type VisualStatus = "listo" | "revision" | "render";
 
@@ -29,8 +30,11 @@ function mapStatus(status: string): VisualStatus {
 
 export default function LibraryPage() {
   const token = useAuthStore((state) => state.token);
+  const [view, setView] = useState<LibraryView>("clips");
   const [clips, setClips] = useState<UserClipItem[]>([]);
+  const [videos, setVideos] = useState<UserVideoItem[]>([]);
   const [totalClips, setTotalClips] = useState(0);
+  const [totalVideos, setTotalVideos] = useState(0);
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -45,17 +49,30 @@ export default function LibraryPage() {
 
     let cancelled = false;
 
-    const loadClips = async () => {
+    const loadData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await videoApi.getMyClips(token, {
-          limit: PAGE_SIZE,
-          offset: (page - 1) * PAGE_SIZE
-        });
-        if (!cancelled) {
-          setClips(response.clips);
-          setTotalClips(response.total);
+        if (view === "clips") {
+          const response = await videoApi.getMyClips(token, {
+            limit: PAGE_SIZE,
+            offset: (page - 1) * PAGE_SIZE,
+            query
+          });
+          if (!cancelled) {
+            setClips(response.clips);
+            setTotalClips(response.total);
+          }
+        } else {
+          const response = await videoApi.getMyVideos(token, {
+            limit: PAGE_SIZE,
+            offset: (page - 1) * PAGE_SIZE,
+            query
+          });
+          if (!cancelled) {
+            setVideos(response.videos);
+            setTotalVideos(response.total);
+          }
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -68,28 +85,14 @@ export default function LibraryPage() {
       }
     };
 
-    void loadClips();
+    void loadData();
 
     return () => {
       cancelled = true;
     };
-  }, [token, page]);
+  }, [token, page, query, view]);
 
-  const totalPages = Math.max(1, Math.ceil(totalClips / PAGE_SIZE));
-
-  const filteredClips = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) {
-      return clips;
-    }
-
-    return clips.filter((clip) => {
-      return (
-        clip.source_filename.toLowerCase().includes(normalizedQuery) ||
-        clip.job_id.toLowerCase().includes(normalizedQuery)
-      );
-    });
-  }, [clips, query]);
+  const totalPages = Math.max(1, Math.ceil((view === "clips" ? totalClips : totalVideos) / PAGE_SIZE));
 
   return (
     <section className="w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
@@ -98,18 +101,47 @@ export default function LibraryPage() {
         <div className="pointer-events-none absolute -bottom-16 left-1/4 h-44 w-44 rounded-full bg-neon-magenta/15 blur-3xl" />
 
         <div className="relative animate-fade-up">
-          <p className="text-xs uppercase tracking-[0.25em] text-neon-cyan/80">biblioteca clips</p>
-          <h1 className="mt-2 font-display text-2xl text-white sm:text-3xl">Todos tus clips en un solo lugar</h1>
+          <p className="text-xs uppercase tracking-[0.25em] text-neon-cyan/80">biblioteca</p>
+          <h1 className="mt-2 font-display text-2xl text-white sm:text-3xl">Tus clips y videos originales</h1>
           <p className="mt-2 max-w-2xl text-sm text-white/70">
-            Visualiza resultados reales de `my-clips`, revisa estado de render y organiza salidas para publicar mas rapido.
+            Cambia entre clips generados y videos subidos originales. La busqueda se hace en backend por nombre o ID.
           </p>
+        </div>
+
+        <div className="relative mt-4 inline-flex rounded-xl border border-white/12 bg-white/5 p-1 text-xs">
+          <button
+            type="button"
+            className={[
+              "rounded-lg px-3 py-1.5 transition",
+              view === "clips" ? "bg-neon-cyan/20 text-neon-cyan" : "text-white/70 hover:text-white"
+            ].join(" ")}
+            onClick={() => {
+              setView("clips");
+              setPage(1);
+            }}
+          >
+            Clips
+          </button>
+          <button
+            type="button"
+            className={[
+              "rounded-lg px-3 py-1.5 transition",
+              view === "videos" ? "bg-neon-cyan/20 text-neon-cyan" : "text-white/70 hover:text-white"
+            ].join(" ")}
+            onClick={() => {
+              setView("videos");
+              setPage(1);
+            }}
+          >
+            Videos originales
+          </button>
         </div>
 
         <div className="relative mt-5 grid gap-3 sm:grid-cols-1">
           <label className="group flex items-center gap-3 rounded-xl border border-white/12 bg-white/5 px-3 py-2 transition hover:border-neon-cyan/40">
             <Search size={15} className="text-neon-cyan/80" />
             <input
-              placeholder="Buscar por id de job o archivo fuente..."
+              placeholder={view === "clips" ? "Buscar por id de job o archivo fuente..." : "Buscar por id de video o archivo subido..."}
               className="w-full bg-transparent text-sm text-white/90 outline-none placeholder:text-white/40"
               value={query}
               onChange={(event) => {
@@ -133,14 +165,21 @@ export default function LibraryPage() {
         </Panel>
       ) : null}
 
-      {!isLoading && !error && filteredClips.length === 0 ? (
+      {!isLoading && !error && view === "clips" && clips.length === 0 ? (
         <Panel className="mt-5">
           <p className="text-sm text-white/70">No encontramos clips para esa busqueda.</p>
         </Panel>
       ) : null}
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {filteredClips.map((clip, index) => {
+      {!isLoading && !error && view === "videos" && videos.length === 0 ? (
+        <Panel className="mt-5">
+          <p className="text-sm text-white/70">No encontramos videos subidos para esa busqueda.</p>
+        </Panel>
+      ) : null}
+
+      {view === "clips" ? (
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {clips.map((clip, index) => {
           const visualStatus = mapStatus(clip.status);
 
           return (
@@ -198,8 +237,53 @@ export default function LibraryPage() {
             </div>
           </article>
           );
-        })}
-      </div>
+          })}
+        </div>
+      ) : (
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {videos.map((video, index) => (
+            <article
+              key={video.video_id}
+              className="group animate-fade-up rounded-2xl border border-white/10 bg-gradient-to-b from-night-800/80 to-night-900/80 p-4 shadow-panel transition duration-300 hover:-translate-y-1 hover:border-neon-cyan/40"
+              style={{ animationDelay: `${index * 90}ms` }}
+            >
+              <div className="relative mb-3 overflow-hidden rounded-xl border border-white/10 bg-night-900/80">
+                {video.preview_url ? (
+                  <video controls preload="metadata" className="aspect-[16/9] w-full object-cover" src={video.preview_url} />
+                ) : (
+                  <div className="aspect-[16/9] grid place-items-center bg-[radial-gradient(circle_at_20%_20%,rgba(53,208,255,0.22),transparent_45%),#0d1630] text-xs text-white/65">
+                    Sin preview disponible
+                  </div>
+                )}
+              </div>
+
+              <h2 className="font-display text-lg text-white">Video {video.video_id.slice(0, 8)}</h2>
+              <p className="mt-2 rounded-full border border-white/15 bg-white/5 px-2 py-1 text-xs text-white/70">{video.filename}</p>
+              <p className="mt-2 inline-flex rounded-full border border-neon-cyan/35 bg-neon-cyan/10 px-2 py-1 text-xs text-neon-cyan">
+                Estado: {video.status ?? "uploaded"}
+              </p>
+
+              <div className="mt-4 flex items-center gap-2">
+                {video.preview_url ? (
+                  <a
+                    href={video.preview_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-neon-cyan/40 bg-neon-cyan/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-neon-cyan transition hover:bg-neon-cyan/20"
+                  >
+                    <Download size={13} />
+                    Abrir video
+                  </a>
+                ) : (
+                  <span className="inline-flex flex-1 items-center justify-center rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/65">
+                    Sin URL disponible
+                  </span>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
 
       {totalPages > 1 ? (
         <Panel className="mt-5">

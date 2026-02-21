@@ -5,6 +5,7 @@ import { VideoPreview } from "@/src/components/home/videoPrevewTimeLine/VideoPre
 import { Panel } from "@/src/components/ui/Panel";
 import { videoApi, type UserClipItem, VideoApiError } from "@/src/services/videoApi";
 import { useAuthStore } from "@/src/store/useAuthStore";
+import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 const PAGE_SIZE = 10;
@@ -37,6 +38,7 @@ export default function TimelinePage() {
   const [clips, setClips] = useState<UserClipItem[]>([]);
   const [totalClips, setTotalClips] = useState(0);
   const [page, setPage] = useState(1);
+  const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
@@ -56,7 +58,8 @@ export default function TimelinePage() {
       try {
         const response = await videoApi.getMyClips(token, {
           limit: PAGE_SIZE,
-          offset: (page - 1) * PAGE_SIZE
+          offset: (page - 1) * PAGE_SIZE,
+          query
         });
         if (cancelled) {
           return;
@@ -81,7 +84,7 @@ export default function TimelinePage() {
     return () => {
       cancelled = true;
     };
-  }, [token, page]);
+  }, [token, page, query]);
 
   const totalPages = Math.max(1, Math.ceil(totalClips / PAGE_SIZE));
 
@@ -98,6 +101,18 @@ export default function TimelinePage() {
         <Panel>
           <p className="text-xs uppercase tracking-[0.22em] text-white/65">timeline</p>
           <h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">Preview y recorte</h3>
+          <label className="mt-3 flex items-center gap-2 rounded-xl border border-white/12 bg-white/5 px-3 py-2 text-sm text-white/80 transition hover:border-neon-cyan/40">
+            <Search size={14} className="text-neon-cyan/80" />
+            <input
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Buscar clip por job o archivo..."
+              className="w-full bg-transparent text-sm text-white/90 outline-none placeholder:text-white/40"
+            />
+          </label>
 
           {isLoading ? (
             <p className="mt-4 text-sm text-white/70">Cargando clips...</p>

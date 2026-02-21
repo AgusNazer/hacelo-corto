@@ -58,6 +58,21 @@ export type UserClipsResponse = {
   clips: UserClipItem[];
 };
 
+export type UserVideoItem = {
+  video_id: string;
+  filename: string;
+  status: string | null;
+  uploaded_at: string;
+  preview_url: string | null;
+};
+
+export type UserVideosResponse = {
+  total: number;
+  limit: number;
+  offset: number;
+  videos: UserVideoItem[];
+};
+
 const apiBaseUrl = env.apiBaseUrl.replace(/\/$/, "");
 
 export class VideoApiError extends Error {
@@ -184,11 +199,16 @@ export const videoApi = {
     return parseResponse<JobStatusResponse>(response);
   },
 
-  async getMyClips(token: string, options?: { limit?: number; offset?: number }) {
+  async getMyClips(token: string, options?: { limit?: number; offset?: number; query?: string }) {
     const params = new URLSearchParams({
       limit: String(options?.limit ?? 50),
       offset: String(options?.offset ?? 0)
     });
+
+    const query = options?.query?.trim();
+    if (query) {
+      params.set("q", query);
+    }
 
     const response = await fetch(`${apiBaseUrl}/api/v1/jobs/my-clips?${params.toString()}`, {
       method: "GET",
@@ -198,5 +218,26 @@ export const videoApi = {
     });
 
     return parseResponse<UserClipsResponse>(response);
+  },
+
+  async getMyVideos(token: string, options?: { limit?: number; offset?: number; query?: string }) {
+    const params = new URLSearchParams({
+      limit: String(options?.limit ?? 20),
+      offset: String(options?.offset ?? 0)
+    });
+
+    const query = options?.query?.trim();
+    if (query) {
+      params.set("q", query);
+    }
+
+    const response = await fetch(`${apiBaseUrl}/api/v1/videos/my-videos?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    return parseResponse<UserVideosResponse>(response);
   }
 };
