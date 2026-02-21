@@ -3,7 +3,8 @@
 import { Panel } from "@/src/components/ui/Panel";
 import { videoApi, type UserClipItem, type UserVideoItem } from "@/src/services/videoApi";
 import { useAuthStore } from "@/src/store/useAuthStore";
-import { Check, Clock3, Download, PencilLine, Search, Tag, Trash2, X } from "lucide-react";
+import { Check, Clock3, Download, PencilLine, Search, Share2, Tag, Trash2, X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const PAGE_SIZE = 12;
@@ -43,6 +44,7 @@ export default function LibraryPage() {
   const [draftFilename, setDraftFilename] = useState("");
   const [isSavingVideo, setIsSavingVideo] = useState(false);
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
+  const [deletingClipId, setDeletingClipId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -162,6 +164,38 @@ export default function LibraryPage() {
       setError(deleteError instanceof Error ? deleteError.message : "No pudimos eliminar el video.");
     } finally {
       setDeletingVideoId(null);
+    }
+  };
+
+  const handleDeleteClip = async (clip: UserClipItem) => {
+    if (!token || deletingClipId) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Vas a eliminar el clip ${clip.job_id.slice(0, 8)}. Esta accion no se puede deshacer.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingClipId(clip.job_id);
+    setError(null);
+
+    try {
+      await videoApi.deleteMyClip(clip.job_id, token);
+      let shouldStepBackPage = false;
+      setClips((prev) => {
+        shouldStepBackPage = prev.length === 1;
+        return prev.filter((item) => item.job_id !== clip.job_id);
+      });
+      setTotalClips((prev) => Math.max(0, prev - 1));
+
+      if (shouldStepBackPage && page > 1) {
+        setPage((prev) => Math.max(1, prev - 1));
+      }
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "No pudimos eliminar el clip.");
+    } finally {
+      setDeletingClipId(null);
     }
   };
 
@@ -305,6 +339,29 @@ export default function LibraryPage() {
                   Sin URL disponible
                 </span>
               )}
+            </div>
+
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <Link
+                href={`/app/timeline?videoId=${clip.video_id}&clipId=${clip.job_id}`}
+                className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/20 bg-white/5 px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/75 transition hover:border-neon-cyan/40 hover:text-neon-cyan"
+              >
+                <PencilLine size={12} /> Editar
+              </Link>
+              <Link
+                href={`/app/share/${clip.job_id}`}
+                className="inline-flex items-center justify-center gap-1 rounded-lg border border-neon-mint/40 bg-neon-mint/10 px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-neon-mint transition hover:bg-neon-mint/20"
+              >
+                <Share2 size={12} /> Compartir
+              </Link>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-1 rounded-lg border border-rose-300/45 bg-rose-300/10 px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-200 transition hover:bg-rose-300/20 disabled:opacity-40"
+                disabled={deletingClipId === clip.job_id}
+                onClick={() => void handleDeleteClip(clip)}
+              >
+                <Trash2 size={12} /> {deletingClipId === clip.job_id ? "Eliminando..." : "Eliminar"}
+              </button>
             </div>
           </article>
           );

@@ -77,6 +77,10 @@ export type UserClipsResponse = {
   clips: UserClipItem[];
 };
 
+export type UserClipDetailResponse = {
+  clip: UserClipItem;
+};
+
 export type UserVideoItem = {
   video_id: string;
   filename: string;
@@ -260,6 +264,28 @@ export const videoApi = {
     });
 
     return parseResponse<UserClipsResponse>(response);
+  },
+
+  async deleteMyClip(jobId: string, token: string) {
+    const response = await fetch(`${apiBaseUrl}/api/v1/jobs/${jobId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    return parseResponse<null>(response);
+  },
+
+  async getMyClipById(jobId: string, token: string) {
+    const response = await fetch(`${apiBaseUrl}/api/v1/jobs/${jobId}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    return parseResponse<UserClipDetailResponse>(response);
   },
 
   async getMyVideos(token: string, options?: { limit?: number; offset?: number; query?: string }) {

@@ -4,10 +4,11 @@ import { VideoSettings } from "@/src/components/home/VideoSettings";
 import { VideoPreview } from "@/src/components/home/videoPrevewTimeLine/VideoPreview";
 import { Panel } from "@/src/components/ui/Panel";
 import { Button } from "@/src/components/ui/Button";
-import { videoApi, type UserVideoItem, VideoApiError } from "@/src/services/videoApi";
+import { videoApi, type UserClipItem, type UserVideoItem, VideoApiError } from "@/src/services/videoApi";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useVideoSettingsStore } from "@/src/store/useVideoSettingsStore";
 import { Search } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 const PAGE_SIZE = 10;
@@ -25,6 +26,9 @@ function normalizeVideoError(error: unknown, fallbackMessage: string) {
 }
 
 export default function TimelinePage() {
+  const searchParams = useSearchParams();
+  const preferredVideoId = searchParams.get("videoId")?.trim() ?? "";
+  const preferredClipId = searchParams.get("clipId")?.trim() ?? "";
   const token = useAuthStore((state) => state.token);
   const settings = useVideoSettingsStore((state) => state.settings);
   const [videos, setVideos] = useState<UserVideoItem[]>([]);
@@ -34,6 +38,7 @@ export default function TimelinePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  const [focusedClip, setFocusedClip] = useState<UserClipItem | null>(null);
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(15);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,6 +58,21 @@ export default function TimelinePage() {
       setIsLoading(true);
       setError(null);
       try {
+        let selectedClip: UserClipItem | null = null;
+        let preferredVideoFromQuery = preferredVideoId;
+
+        if (preferredClipId) {
+          try {
+            const clipResponse = await videoApi.getMyClipById(preferredClipId, token);
+            selectedClip = clipResponse.clip;
+            if (selectedClip && !preferredVideoFromQuery) {
+              preferredVideoFromQuery = selectedClip.video_id;
+            }
+          } catch {
+            selectedClip = null;
+          }
+        }
+
         const response = await videoApi.getMyVideos(token, {
           limit: PAGE_SIZE,
           offset: (page - 1) * PAGE_SIZE,
@@ -62,13 +82,37 @@ export default function TimelinePage() {
           return;
         }
 
-        setVideos(response.videos);
+        let nextVideos = response.videos;
+
+        if (preferredVideoFromQuery && !response.videos.some((video) => video.video_id === preferredVideoFromQuery)) {
+          try {
+            const preferredVideo = await videoApi.getMyVideoById(preferredVideoFromQuery, token);
+            nextVideos = [
+              {
+                video_id: preferredVideo.video_id,
+                filename: preferredVideo.filename,
+                status: preferredVideo.status,
+                uploaded_at: preferredVideo.uploaded_at,
+                preview_url: preferredVideo.preview_url
+              },
+              ...response.videos.filter((video) => video.video_id !== preferredVideo.video_id)
+            ];
+          } catch {
+            nextVideos = response.videos;
+          }
+        }
+
+        setVideos(nextVideos);
+        setFocusedClip(selectedClip);
         setTotalVideos(response.total);
         setSelectedVideoId((prev) => {
-          if (prev && response.videos.some((video) => video.video_id === prev)) {
+          if (preferredVideoFromQuery && nextVideos.some((video) => video.video_id === preferredVideoFromQuery)) {
+            return preferredVideoFromQuery;
+          }
+          if (prev && nextVideos.some((video) => video.video_id === prev)) {
             return prev;
           }
-          return response.videos[0]?.video_id ?? null;
+          return nextVideos[0]?.video_id ?? null;
         });
       } catch (loadError) {
         if (!cancelled) {
@@ -86,7 +130,7 @@ export default function TimelinePage() {
     return () => {
       cancelled = true;
     };
-  }, [token, page, query]);
+  }, [token, page, preferredClipId, preferredVideoId, query]);
 
   const totalPages = Math.max(1, Math.ceil(totalVideos / PAGE_SIZE));
 
@@ -95,7 +139,10 @@ export default function TimelinePage() {
     [videos, selectedVideoId]
   );
 
-  const selectedPreviewUrl = selectedVideo?.preview_url ?? null;
+  const selectedPreviewUrl =
+    focusedClip && focusedClip.video_id === selectedVideoId
+      ? (focusedClip.output_path ?? selectedVideo?.preview_url ?? null)
+      : (selectedVideo?.preview_url ?? null);
 
   const handleCreateJob = async () => {
     if (!token || !selectedVideoId) {
@@ -147,6 +194,12 @@ export default function TimelinePage() {
             />
           </label>
 
+          {focusedClip ? (
+            <div className="mt-3 rounded-xl border border-neon-cyan/35 bg-neon-cyan/10 px-3 py-2 text-xs text-neon-cyan">
+              Editando desde clip {focusedClip.job_id.slice(0, 8)} sobre video {focusedClip.video_id.slice(0, 8)}.
+            </div>
+          ) : null}
+
           {isLoading ? (
             <p className="mt-4 text-sm text-white/70">Cargando videos...</p>
           ) : error ? (
@@ -182,7 +235,12 @@ export default function TimelinePage() {
                     <button
                       type="button"
                       key={video.video_id}
-                      onClick={() => setSelectedVideoId(video.video_id)}
+                      onClick={() => {
+                        setSelectedVideoId(video.video_id);
+                        if (focusedClip && focusedClip.video_id !== video.video_id) {
+                          setFocusedClip(null);
+                        }
+                      }}
                       className={[
                         "rounded-xl border px-3 py-2 text-left text-sm transition",
                         selectedVideoId === video.video_id
