@@ -19,6 +19,23 @@ export type VideoUrlResponse = {
   filename: string;
 };
 
+export type AutoReframeJobItem = {
+  job_id: string;
+  job_type: string;
+  status: string;
+  start_sec: number;
+  end_sec: number;
+  created_at: string;
+};
+
+export type AutoReframeResponse = {
+  video_id: string;
+  total_jobs: number;
+  clip_duration_sec: number;
+  used_video_duration_sec: number | null;
+  jobs: AutoReframeJobItem[];
+};
+
 const apiBaseUrl = env.apiBaseUrl.replace(/\/$/, "");
 
 export class VideoApiError extends Error {
@@ -110,5 +127,27 @@ export const videoApi = {
     });
 
     return parseResponse<VideoUrlResponse>(response);
+  },
+
+  async createAutoReframeJobs(
+    videoId: string,
+    token: string,
+    options?: { clipsCount?: number; clipDurationSec?: number }
+  ) {
+    const body = {
+      clips_count: options?.clipsCount ?? 3,
+      clip_duration_sec: options?.clipDurationSec ?? 15
+    };
+
+    const response = await fetch(`${apiBaseUrl}/api/v1/jobs/reframe/${videoId}/auto`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(body)
+    });
+
+    return parseResponse<AutoReframeResponse>(response);
   }
 };

@@ -6,15 +6,42 @@ import { UploadDropzone } from "@/src/components/home/UploadDropzone";
 import { VideoPreview } from "@/src/components/home/videoPrevewTimeLine/VideoPreview";
 import { VideoSettings } from "@/src/components/home/VideoSettings";
 import { Panel } from "@/src/components/ui/Panel";
-import { VideoApiError, type VideoUploadResponse, videoApi } from "@/src/services/videoApi";
+import { VideoApiError, type AutoReframeJobItem, type VideoUploadResponse, videoApi } from "@/src/services/videoApi";
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useEffect, useMemo, useState } from "react";
 
-const mockClips: Clip[] = [
-  { id: "clip-1", title: "Hook inicial", duration: "00:31", preset: "Impact", status: "listo" },
-  { id: "clip-2", title: "Momento clave", duration: "00:24", preset: "Story", status: "revision" },
-  { id: "clip-3", title: "CTA final", duration: "00:18", preset: "Fast Cut", status: "render" }
-];
+function toTimeLabel(seconds: number) {
+  const min = Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const sec = Math.floor(seconds % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${min}:${sec}`;
+}
+
+function mapJobStatusToClipStatus(status: string): Clip["status"] {
+  const normalized = status.toLowerCase();
+  if (normalized === "completed") {
+    return "listo";
+  }
+
+  if (normalized === "failed") {
+    return "revision";
+  }
+
+  return "render";
+}
+
+function mapJobsToClips(jobs: AutoReframeJobItem[]): Clip[] {
+  return jobs.map((job, index) => ({
+    id: job.job_id,
+    title: `Clip ${index + 1}`,
+    duration: toTimeLabel(Math.max(job.end_sec - job.start_sec, 0)),
+    preset: "Auto Reframe",
+    status: mapJobStatusToClipStatus(job.status)
+  }));
+}
 
 function normalizeVideoError(error: unknown, fallbackMessage: string) {
   if (error instanceof VideoApiError) {
@@ -44,12 +71,16 @@ function normalizeVideoError(error: unknown, fallbackMessage: string) {
 export default function AppHomePage() {
   const token = useAuthStore((state) => state.token);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCreatingJobs, setIsCreatingJobs] = useState(false);
   const [uploadedVideo, setUploadedVideo] = useState<VideoUploadResponse | null>(null);
+  const [autoJobCount, setAutoJobCount] = useState(0);
+  const [createdJobs, setCreatedJobs] = useState<AutoReframeJobItem[]>([]);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [jobError, setJobError] = useState<string | null>(null);
 
   const hasVideo = Boolean(uploadedVideo);
-  const visibleClips = useMemo(() => (hasVideo && !isUploading ? mockClips : []), [hasVideo, isUploading]);
+  const visibleClips = useMemo(() => mapJobsToClips(createdJobs), [createdJobs]);
 
   useEffect(() => {
     return () => {
@@ -63,24 +94,49 @@ export default function AppHomePage() {
     const localPreviewUrl = URL.createObjectURL(file);
 
     setIsUploading(true);
+    setIsCreatingJobs(false);
     setUploadedVideo(null);
+    setCreatedJobs([]);
+    setAutoJobCount(0);
     setUploadError(null);
+    setJobError(null);
+
+    let uploaded: VideoUploadResponse;
 
     try {
-      const uploaded = await videoApi.upload(file, token);
-      setUploadedVideo(uploaded);
-      setVideoPreviewUrl((prev) => {
-        if (prev) {
-          URL.revokeObjectURL(prev);
-        }
-        return localPreviewUrl;
-      });
+      uploaded = await videoApi.upload(file, token);
     } catch (error) {
       URL.revokeObjectURL(localPreviewUrl);
       setVideoPreviewUrl(null);
       setUploadError(normalizeVideoError(error, "No pudimos subir el video."));
-    } finally {
       setIsUploading(false);
+      return;
+    }
+
+    setUploadedVideo(uploaded);
+    setVideoPreviewUrl((prev) => {
+      if (prev) {
+        URL.revokeObjectURL(prev);
+      }
+      return localPreviewUrl;
+    });
+    setIsUploading(false);
+
+    if (!token) {
+      setJobError("No encontramos tu sesion para crear clips automaticos. Volve a iniciar sesion.");
+      return;
+    }
+
+    setIsCreatingJobs(true);
+
+    try {
+      const autoJobs = await videoApi.createAutoReframeJobs(uploaded.video_id, token);
+      setCreatedJobs(autoJobs.jobs);
+      setAutoJobCount(autoJobs.total_jobs);
+    } catch (error) {
+      setJobError(normalizeVideoError(error, "No pudimos crear los clips automaticos."));
+    } finally {
+      setIsCreatingJobs(false);
     }
   };
 
@@ -102,26 +158,32 @@ export default function AppHomePage() {
             isUploading={isUploading}
             uploadError={uploadError}
             videoId={uploadedVideo?.video_id ?? null}
-            videoPreviewUrl={videoPreviewUrl}
+            isCreatingJobs={isCreatingJobs}
+            jobsCreated={autoJobCount}
+            jobError={jobError}
           />
         </Panel>
       </div>
-      {showPreview &&(<div className="flex flex-col lg:flex-row gap-5 mt-5">
-        <Panel >
-          <VideoPreview videoPreviewUrl={videoPreviewUrl}
-          onTrimChange={(start, end) => {
-        console.log("Enviar al backend:", { start, end });
-      }}
+      {showPreview && (<div className="mt-5 flex flex-col gap-5 lg:flex-row">
+        <Panel>
+          <p className="text-xs uppercase tracking-[0.22em] text-white/65">timeline</p>
+          <h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">Preview y recorte</h3>
+          <VideoPreview
+            videoPreviewUrl={videoPreviewUrl}
+            onTrimChange={(start, end) => {
+              console.log("Enviar al backend:", { start, end });
+            }}
           />
         </Panel>
         <Panel>
+          <p className="text-xs uppercase tracking-[0.22em] text-white/65">configuracion</p>
+          <h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">Ajustes de recorte</h3>
           <VideoSettings />
         </Panel>
-
       </div>)}
-      
+
       <Panel className="mt-5">
-        <GeneratedClipsSection clips={visibleClips} showLoading={isUploading} />
+        <GeneratedClipsSection clips={visibleClips} showLoading={isUploading || isCreatingJobs} />
       </Panel>
     </section>
   );
