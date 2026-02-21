@@ -3,8 +3,6 @@
 import { GeneratedClipsSection, type Clip } from "@/src/components/home/GeneratedClipsSection";
 import { ProjectStatusPanel } from "@/src/components/home/ProjectStatusPanel";
 import { UploadDropzone } from "@/src/components/home/UploadDropzone";
-import { VideoPreview } from "@/src/components/home/videoPrevewTimeLine/VideoPreview";
-import { VideoSettings } from "@/src/components/home/VideoSettings";
 import { Panel } from "@/src/components/ui/Panel";
 import { VideoApiError, type AutoReframeJobItem, type VideoUploadResponse, videoApi } from "@/src/services/videoApi";
 import { useAuthStore } from "@/src/store/useAuthStore";
@@ -22,25 +20,34 @@ function toTimeLabel(seconds: number) {
 
 function mapJobStatusToClipStatus(status: string): Clip["status"] {
   const normalized = status.toLowerCase();
-  if (normalized === "completed") {
+  if (normalized === "completed" || normalized === "done") {
     return "listo";
   }
 
-  if (normalized === "failed") {
+  if (normalized === "failed" || normalized === "error") {
     return "revision";
   }
 
   return "render";
 }
 
-function mapJobsToClips(jobs: AutoReframeJobItem[]): Clip[] {
-  return jobs.map((job, index) => ({
+function mapJobsToClips(
+  jobs: AutoReframeJobItem[],
+  jobStatusMap: Record<string, { status: string; outputPath: string | null }>
+): Clip[] {
+  return jobs.map((job, index) => {
+    const statusInfo = jobStatusMap[job.job_id];
+    const status = statusInfo?.status ?? job.status;
+
+    return {
     id: job.job_id,
     title: `Clip ${index + 1}`,
     duration: toTimeLabel(Math.max(job.end_sec - job.start_sec, 0)),
     preset: "Auto Reframe",
-    status: mapJobStatusToClipStatus(job.status)
-  }));
+    status: mapJobStatusToClipStatus(status),
+    previewUrl: statusInfo?.outputPath ?? null
+  };
+  });
 }
 
 function normalizeVideoError(error: unknown, fallbackMessage: string) {
@@ -75,28 +82,60 @@ export default function AppHomePage() {
   const [uploadedVideo, setUploadedVideo] = useState<VideoUploadResponse | null>(null);
   const [autoJobCount, setAutoJobCount] = useState(0);
   const [createdJobs, setCreatedJobs] = useState<AutoReframeJobItem[]>([]);
-  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [jobStatusMap, setJobStatusMap] = useState<Record<string, { status: string; outputPath: string | null }>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
 
   const hasVideo = Boolean(uploadedVideo);
-  const visibleClips = useMemo(() => mapJobsToClips(createdJobs), [createdJobs]);
+  const visibleClips = useMemo(() => mapJobsToClips(createdJobs, jobStatusMap), [createdJobs, jobStatusMap]);
 
   useEffect(() => {
-    return () => {
-      if (videoPreviewUrl) {
-        URL.revokeObjectURL(videoPreviewUrl);
+    if (!token || createdJobs.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const syncStatuses = async () => {
+      try {
+        const statuses = await Promise.all(createdJobs.map((job) => videoApi.getJobStatus(job.job_id, token)));
+        if (cancelled) {
+          return;
+        }
+
+        const nextMap: Record<string, { status: string; outputPath: string | null }> = {};
+        statuses.forEach((item) => {
+          nextMap[item.job_id] = {
+            status: item.status,
+            outputPath: item.output_path
+          };
+        });
+
+        setJobStatusMap(nextMap);
+      } catch {
+        if (!cancelled) {
+          setJobError((prev) => prev ?? "No pudimos actualizar el estado de algunos clips generados.");
+        }
       }
     };
-  }, [videoPreviewUrl]);
+
+    void syncStatuses();
+    const intervalId = window.setInterval(() => {
+      void syncStatuses();
+    }, 6000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [createdJobs, token]);
 
   const handleUpload = async (file: File) => {
-    const localPreviewUrl = URL.createObjectURL(file);
-
     setIsUploading(true);
     setIsCreatingJobs(false);
     setUploadedVideo(null);
     setCreatedJobs([]);
+    setJobStatusMap({});
     setAutoJobCount(0);
     setUploadError(null);
     setJobError(null);
@@ -106,20 +145,12 @@ export default function AppHomePage() {
     try {
       uploaded = await videoApi.upload(file, token);
     } catch (error) {
-      URL.revokeObjectURL(localPreviewUrl);
-      setVideoPreviewUrl(null);
       setUploadError(normalizeVideoError(error, "No pudimos subir el video."));
       setIsUploading(false);
       return;
     }
 
     setUploadedVideo(uploaded);
-    setVideoPreviewUrl((prev) => {
-      if (prev) {
-        URL.revokeObjectURL(prev);
-      }
-      return localPreviewUrl;
-    });
     setIsUploading(false);
 
     if (!token) {
@@ -133,6 +164,12 @@ export default function AppHomePage() {
       const autoJobs = await videoApi.createAutoReframeJobs(uploaded.video_id, token);
       setCreatedJobs(autoJobs.jobs);
       setAutoJobCount(autoJobs.total_jobs);
+
+      const initialMap: Record<string, { status: string; outputPath: string | null }> = {};
+      autoJobs.jobs.forEach((job) => {
+        initialMap[job.job_id] = { status: job.status, outputPath: null };
+      });
+      setJobStatusMap(initialMap);
     } catch (error) {
       setJobError(normalizeVideoError(error, "No pudimos crear los clips automaticos."));
     } finally {
@@ -140,7 +177,6 @@ export default function AppHomePage() {
     }
   };
 
-  const showPreview = Boolean(videoPreviewUrl && hasVideo && !isUploading);
   return (
     <section className="w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="grid gap-5 xl:grid-cols-[1.55fr_0.95fr]">
@@ -164,24 +200,6 @@ export default function AppHomePage() {
           />
         </Panel>
       </div>
-      {showPreview && (<div className="mt-5 flex flex-col gap-5 lg:flex-row">
-        <Panel>
-          <p className="text-xs uppercase tracking-[0.22em] text-white/65">timeline</p>
-          <h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">Preview y recorte</h3>
-          <VideoPreview
-            videoPreviewUrl={videoPreviewUrl}
-            onTrimChange={(start, end) => {
-              console.log("Enviar al backend:", { start, end });
-            }}
-          />
-        </Panel>
-        <Panel>
-          <p className="text-xs uppercase tracking-[0.22em] text-white/65">configuracion</p>
-          <h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">Ajustes de recorte</h3>
-          <VideoSettings />
-        </Panel>
-      </div>)}
-
       <Panel className="mt-5">
         <GeneratedClipsSection clips={visibleClips} showLoading={isUploading || isCreatingJobs} />
       </Panel>

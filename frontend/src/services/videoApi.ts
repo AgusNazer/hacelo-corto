@@ -36,6 +36,28 @@ export type AutoReframeResponse = {
   jobs: AutoReframeJobItem[];
 };
 
+export type JobStatusResponse = {
+  job_id: string;
+  status: string;
+  output_path: string | null;
+};
+
+export type UserClipItem = {
+  job_id: string;
+  video_id: string;
+  status: string;
+  output_path: string | null;
+  source_filename: string;
+  created_at: string;
+};
+
+export type UserClipsResponse = {
+  total: number;
+  limit: number;
+  offset: number;
+  clips: UserClipItem[];
+};
+
 const apiBaseUrl = env.apiBaseUrl.replace(/\/$/, "");
 
 export class VideoApiError extends Error {
@@ -149,5 +171,32 @@ export const videoApi = {
     });
 
     return parseResponse<AutoReframeResponse>(response);
+  },
+
+  async getJobStatus(jobId: string, token: string) {
+    const response = await fetch(`${apiBaseUrl}/api/v1/jobs/status/${jobId}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    return parseResponse<JobStatusResponse>(response);
+  },
+
+  async getMyClips(token: string, options?: { limit?: number; offset?: number }) {
+    const params = new URLSearchParams({
+      limit: String(options?.limit ?? 50),
+      offset: String(options?.offset ?? 0)
+    });
+
+    const response = await fetch(`${apiBaseUrl}/api/v1/jobs/my-clips?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    return parseResponse<UserClipsResponse>(response);
   }
 };
