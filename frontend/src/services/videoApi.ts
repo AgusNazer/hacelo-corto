@@ -36,6 +36,25 @@ export type AutoReframeResponse = {
   jobs: AutoReframeJobItem[];
 };
 
+export type ReframeJobRequest = {
+  start_sec: number;
+  end_sec: number;
+  crop_to_vertical?: boolean;
+  subtitles?: boolean;
+  face_tracking?: boolean;
+  color_filter?: boolean;
+};
+
+export type ReframeJobResponse = {
+  job_id: string;
+  job_type: string;
+  status: string;
+  filename: string;
+  start_sec: number;
+  end_sec: number;
+  created_at: string;
+};
+
 export type JobStatusResponse = {
   job_id: string;
   status: string;
@@ -186,6 +205,19 @@ export const videoApi = {
     });
 
     return parseResponse<AutoReframeResponse>(response);
+  },
+
+  async createReframeJob(videoId: string, token: string, payload: ReframeJobRequest) {
+    const response = await fetch(`${apiBaseUrl}/api/v1/jobs/reframe/${videoId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    return parseResponse<ReframeJobResponse>(response);
   },
 
   async getJobStatus(jobId: string, token: string) {
