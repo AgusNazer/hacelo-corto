@@ -87,3 +87,7 @@ class UserClipsResponse(BaseSchema):
     limit: int
     offset: int
     clips: list[UserClipItem]
+
+
+class UserClipDetailResponse(BaseSchema):
+    clip: UserClipItem

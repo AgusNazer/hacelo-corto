@@ -11,6 +11,7 @@ from app.schemas.job import (
     JobStatusResponse,
     JobAutoReframeResponse,
     JobAutoReframeItem,
+    UserClipDetailResponse,
     UserClipsResponse,
     UserClipItem,
 )
@@ -20,6 +21,7 @@ from app.core.logging import setup_logging
 from app.utils.exceptions import (
     JobParameterException,
     NotFoundException,
+    VideoDBException,
 )
 
 logger = setup_logging()
@@ -449,3 +451,55 @@ class JobService:
         ]
 
         return UserClipsResponse(total=total, limit=limit, offset=offset, clips=clips)
+
+    def get_user_clip(self, job_id: UUID, user_id: UUID) -> UserClipDetailResponse:
+        row = (
+            self.db.query(Job, Video)
+            .join(Video, Video.id == Job.video_id)
+            .filter(
+                Job.id == job_id,
+                Job.user_id == user_id,
+                Job.job_type == JobType.REFRAME,
+            )
+            .first()
+        )
+
+        if not row:
+            raise NotFoundException("Clip no encontrado")
+
+        job, video = row
+        clip = UserClipItem(
+            job_id=job.id,
+            video_id=job.video_id,
+            status=job.status,
+            output_path=self._resolve_output_url(job.output_path),
+            source_filename=video.original_filename,
+            created_at=job.created_at,
+        )
+        return UserClipDetailResponse(clip=clip)
+
+    def delete_user_clip(self, job_id: UUID, user_id: UUID) -> None:
+        job = (
+            self.db.query(Job)
+            .filter(
+                Job.id == job_id,
+                Job.user_id == user_id,
+                Job.job_type == JobType.REFRAME,
+            )
+            .first()
+        )
+
+        if not job:
+            raise NotFoundException("Clip no encontrado")
+
+        if job.output_path:
+            storage_path = self._extract_storage_path(job.output_path)
+            if storage_path:
+                VideoWorkerService().delete_video_from_storage(storage_path)
+
+        try:
+            self.db.delete(job)
+            self.db.commit()
+        except Exception as exc:
+            self.db.rollback()
+            raise VideoDBException("Error eliminando clip", str(exc))

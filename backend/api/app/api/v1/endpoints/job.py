@@ -1,6 +1,6 @@
 from typing import Annotated
 from uuid import UUID
-from fastapi import APIRouter, Depends, status, Path, Query
+from fastapi import APIRouter, Depends, Response, status, Path, Query
 from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_active_user
 from app.database.session import get_db
@@ -9,6 +9,7 @@ from app.models.user import User
 from app.services.job_service import JobService
 from app.services.dependencies import get_job_service
 from app.schemas.job import (
+    UserClipDetailResponse,
     JobReframeResponse,
     JobStatusResponse,
     JobReframeRequest,
@@ -116,3 +117,33 @@ async def get_my_clips(
     ] = None,
 ) -> UserClipsResponse:
     return service.list_user_clips(current_user.id, limit=limit, offset=offset, query=q)
+
+
+@router.get(
+    "/{job_id}",
+    response_model=UserClipDetailResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Obtener clip propio",
+    description="Devuelve el detalle de un clip (job reframe) del usuario autenticado",
+)
+async def get_my_clip_by_id(
+    job_id: Annotated[UUID, Path(description="ID del clip/job")],
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    service: Annotated[JobService, Depends(get_job_service)],
+) -> UserClipDetailResponse:
+    return service.get_user_clip(job_id, current_user.id)
+
+
+@router.delete(
+    "/{job_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar clip propio",
+    description="Elimina un clip generado (job reframe) del usuario autenticado",
+)
+async def delete_my_clip(
+    job_id: Annotated[UUID, Path(description="ID del clip/job")],
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    service: Annotated[JobService, Depends(get_job_service)],
+) -> Response:
+    service.delete_user_clip(job_id, current_user.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
