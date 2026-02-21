@@ -24,6 +24,22 @@ class JobStatusResponse(BaseSchema):
 class JobReframeRequest(BaseSchema):
     start_sec: int = Field(..., description="Inicio de recorte en Segundo")
     end_sec: int = Field(..., description="Final del recorte en Segundos")
+    crop_to_vertical: bool | None = Field(
+        default=None,
+        description="Opcional: forzar salida vertical",
+    )
+    subtitles: bool | None = Field(
+        default=None,
+        description="Opcional: habilitar subtitulos",
+    )
+    face_tracking: bool | None = Field(
+        default=None,
+        description="Opcional: seguimiento facial",
+    )
+    color_filter: bool | None = Field(
+        default=None,
+        description="Opcional: aplicar filtro de color",
+    )
 
 
 class AutoClipSegment(BaseSchema):

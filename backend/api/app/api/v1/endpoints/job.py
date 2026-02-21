@@ -45,6 +45,10 @@ async def reframe_video(
         user_id=current_user.id,
         start_sec=body.start_sec,
         end_sec=body.end_sec,
+        crop_to_vertical=body.crop_to_vertical,
+        subtitles=body.subtitles,
+        face_tracking=body.face_tracking,
+        color_filter=body.color_filter,
     )
 
 

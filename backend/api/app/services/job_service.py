@@ -341,9 +341,26 @@ class JobService:
             return []
 
     def reframe_video(
-        self, video_id: UUID, user_id: UUID, start_sec: int, end_sec: int
+        self,
+        video_id: UUID,
+        user_id: UUID,
+        start_sec: int,
+        end_sec: int,
+        crop_to_vertical: bool | None = None,
+        subtitles: bool | None = None,
+        face_tracking: bool | None = None,
+        color_filter: bool | None = None,
     ) -> JobReframeResponse:
         video = self._get_user_video(video_id, user_id)
+
+        logger.info(
+            "Reframe options for video %s: crop_to_vertical=%s subtitles=%s face_tracking=%s color_filter=%s",
+            video_id,
+            crop_to_vertical,
+            subtitles,
+            face_tracking,
+            color_filter,
+        )
 
         return self._create_reframe_job(
             video=video,
