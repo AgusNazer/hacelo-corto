@@ -7,6 +7,8 @@ import { videoApi, type UserClipItem, VideoApiError } from "@/src/services/video
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useEffect, useMemo, useState } from "react";
 
+const PAGE_SIZE = 10;
+
 function normalizeClipStatus(status: string) {
   const normalized = status.toLowerCase();
   if (normalized === "done" || normalized === "completed") {
@@ -33,6 +35,8 @@ function normalizeVideoError(error: unknown, fallbackMessage: string) {
 export default function TimelinePage() {
   const token = useAuthStore((state) => state.token);
   const [clips, setClips] = useState<UserClipItem[]>([]);
+  const [totalClips, setTotalClips] = useState(0);
+  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
@@ -50,13 +54,17 @@ export default function TimelinePage() {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await videoApi.getMyClips(token, { limit: 100, offset: 0 });
+        const response = await videoApi.getMyClips(token, {
+          limit: PAGE_SIZE,
+          offset: (page - 1) * PAGE_SIZE
+        });
         if (cancelled) {
           return;
         }
 
         setClips(response.clips);
-        setSelectedClipId((prev) => prev ?? response.clips[0]?.job_id ?? null);
+        setTotalClips(response.total);
+        setSelectedClipId(response.clips[0]?.job_id ?? null);
       } catch (loadError) {
         if (!cancelled) {
           setError(normalizeVideoError(loadError, "No pudimos cargar tus clips."));
@@ -73,7 +81,9 @@ export default function TimelinePage() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, page]);
+
+  const totalPages = Math.max(1, Math.ceil(totalClips / PAGE_SIZE));
 
   const selectedClip = useMemo(
     () => clips.find((clip) => clip.job_id === selectedClipId) ?? null,
@@ -107,28 +117,54 @@ export default function TimelinePage() {
           )}
 
           {!isLoading && clips.length > 0 ? (
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {clips.map((clip) => {
-                const normalized = normalizeClipStatus(clip.status);
-                return (
-                  <button
-                    type="button"
-                    key={clip.job_id}
-                    onClick={() => setSelectedClipId(clip.job_id)}
-                    className={[
-                      "rounded-xl border px-3 py-2 text-left text-sm transition",
-                      selectedClipId === clip.job_id
-                        ? "border-neon-cyan/45 bg-neon-cyan/10 text-white"
-                        : "border-white/10 bg-white/5 text-white/75 hover:border-white/20 hover:text-white"
-                    ].join(" ")}
-                  >
-                    <p className="font-semibold">Clip {clip.job_id.slice(0, 8)}</p>
-                    <p className="mt-1 text-xs text-white/60">Fuente: {clip.source_filename}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.16em] text-neon-cyan/80">Estado: {normalized}</p>
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                {clips.map((clip) => {
+                  const normalized = normalizeClipStatus(clip.status);
+                  return (
+                    <button
+                      type="button"
+                      key={clip.job_id}
+                      onClick={() => setSelectedClipId(clip.job_id)}
+                      className={[
+                        "rounded-xl border px-3 py-2 text-left text-sm transition",
+                        selectedClipId === clip.job_id
+                          ? "border-neon-cyan/45 bg-neon-cyan/10 text-white"
+                          : "border-white/10 bg-white/5 text-white/75 hover:border-white/20 hover:text-white"
+                      ].join(" ")}
+                    >
+                      <p className="font-semibold">Clip {clip.job_id.slice(0, 8)}</p>
+                      <p className="mt-1 text-xs text-white/60">Fuente: {clip.source_filename}</p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.16em] text-neon-cyan/80">Estado: {normalized}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {totalPages > 1 ? (
+                <div className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80">
+                  <span>Pagina {page} de {totalPages}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-white/15 px-3 py-1.5 text-xs transition hover:border-white/35 disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={page <= 1 || isLoading}
+                      onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-white/15 px-3 py-1.5 text-xs transition hover:border-white/35 disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={page >= totalPages || isLoading}
+                      onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </>
           ) : null}
         </Panel>
 

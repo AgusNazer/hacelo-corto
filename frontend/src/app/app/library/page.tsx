@@ -6,6 +6,8 @@ import { useAuthStore } from "@/src/store/useAuthStore";
 import { Clock3, Download, Search, Tag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+const PAGE_SIZE = 12;
+
 type VisualStatus = "listo" | "revision" | "render";
 
 const statusStyles: Record<VisualStatus, string> = {
@@ -28,6 +30,8 @@ function mapStatus(status: string): VisualStatus {
 export default function LibraryPage() {
   const token = useAuthStore((state) => state.token);
   const [clips, setClips] = useState<UserClipItem[]>([]);
+  const [totalClips, setTotalClips] = useState(0);
+  const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +49,13 @@ export default function LibraryPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await videoApi.getMyClips(token, { limit: 100, offset: 0 });
+        const response = await videoApi.getMyClips(token, {
+          limit: PAGE_SIZE,
+          offset: (page - 1) * PAGE_SIZE
+        });
         if (!cancelled) {
           setClips(response.clips);
+          setTotalClips(response.total);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -65,7 +73,9 @@ export default function LibraryPage() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, page]);
+
+  const totalPages = Math.max(1, Math.ceil(totalClips / PAGE_SIZE));
 
   const filteredClips = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -102,7 +112,10 @@ export default function LibraryPage() {
               placeholder="Buscar por id de job o archivo fuente..."
               className="w-full bg-transparent text-sm text-white/90 outline-none placeholder:text-white/40"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPage(1);
+              }}
             />
           </label>
         </div>
@@ -184,9 +197,35 @@ export default function LibraryPage() {
               )}
             </div>
           </article>
-        );
+          );
         })}
       </div>
+
+      {totalPages > 1 ? (
+        <Panel className="mt-5">
+          <div className="flex items-center justify-between text-sm text-white/80">
+            <span>Pagina {page} de {totalPages}</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-white/15 px-3 py-1.5 text-xs transition hover:border-white/35 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={page <= 1 || isLoading}
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-white/15 px-3 py-1.5 text-xs transition hover:border-white/35 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={page >= totalPages || isLoading}
+                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        </Panel>
+      ) : null}
     </section>
   );
 }
