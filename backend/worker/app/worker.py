@@ -119,6 +119,10 @@ def handle_job(payload, job_service, queue_service, storage_service):
 
     job_service.update_status(job.id, JobStatus.RUNNING)
 
+    if job.job_type == JobType.AUTO_REFRAME:
+        handle_auto_reframe(job, payload, job_service, storage_service)
+        return
+    
     if job.job_type == JobType.REFRAME:
         handle_reframe(job, payload, job_service, storage_service)
         return
@@ -135,7 +139,7 @@ def handle_cancel(job, job_service):
     # TODO cancel(job.video_id)
 
 
-def handle_reframe_pipeline(job, payload, filename, video_url, job_service, storage_service):
+def handle_reframe_pipeline(job, payload, filename, video_url):
     # ejecutar pipeline
     try:
         # recuperar datos del payload
@@ -160,24 +164,26 @@ def handle_reframe_pipeline(job, payload, filename, video_url, job_service, stor
         raise
 
 
-def handle_reframe(job, payload, job_service, storage_service):
+def _get_video_from_job(job, job_service, storage_service):
     try:
         video = job.video
         if not video:
             job_service.update_status(job.id, JobStatus.FAILED, "No video")
-            return
+            return None
 
         filename = video.original_filename
         if not filename:
             logger.warning(f"❌ Video {job.video_id} has no filename")
             job_service.update_status(job.id, JobStatus.FAILED, "No filename")
-            return
+            return None
         
         video_url = storage_service.get_video_url(video.storage_path)
         if not video_url:
             logger.warning(f"❌ Video {job.video_id} has no storage_path")
             job_service.update_status(job.id, JobStatus.FAILED, "No video URL")
-            return
+            return None
+        
+        return video, filename, video_url
 
     except Exception as e:
         logger.error(f"❌ Failed to prepare job {job.id}: {e}")
@@ -188,8 +194,75 @@ def handle_reframe(job, payload, job_service, storage_service):
         )
         return
 
+
+def handle_auto_reframe(job, payload, job_service, storage_service):
+    logger.info(f"⚙️  Processing AUTO-REFRAME job {job.id}")
+
+    result = _get_video_from_job(job, job_service, storage_service)
+    if not result:
+        # ya se actualizó el estado dentro de _get_video_from_job...
+        return
+    video, filename, video_url = result
+
     try:
-        video_local_path = handle_reframe_pipeline(job, payload, filename, video_url, job_service, storage_service)
+        # llamar calculos para auto frame
+        clips_count = payload.get("clips_count")
+        clip_duration_sec = payload.get("clip_duration_sec")
+        requested_profile = payload.get("content_profile", "auto")
+        segments = job_service._build_auto_clip_ranges(video, clips_count, clip_duration_sec, requested_profile)
+        logger.info(f"✅ Auto-reframe calculations completed. Segments: {segments}")
+
+    except Exception as e:
+        logger.error(f"❌ Job {job.id} failed during auto-reframe calculations: {e}")
+        job_service.update_status(job.id, JobStatus.FAILED, str(e))
+        return
+    
+    # Crear jobs hijos REFRAME y publicarlos en Redis
+    try:
+        ranges, duration, resolved_profile = segments
+        for start_sec, end_sec in ranges:
+            new_job = job_service.create_reframe_job_for_worker(
+                user_id=job.user_id,
+                video_id=video.id,
+                start_sec=start_sec,
+                end_sec=end_sec,
+                output_style=payload.get("output_style", "vertical"),
+                content_profile=resolved_profile,
+                job_type=JobType.REFRAME
+            )
+            queue_service.publish_reframe_job(
+                job_id=new_job.id,
+                video_id=video.id,
+                user_id=job.user_id,
+                start_sec=start_sec,
+                end_sec=end_sec,
+                output_style=payload.get("output_style", "vertical"),
+                content_profile=resolved_profile,
+            )
+    except Exception as e:
+        logger.error(f"❌ Job {job.id} failed during job creation: {e}")
+        job_service.update_status(job.id, JobStatus.FAILED, str(e))
+        return
+    
+    # Marcar job padre como COMPLETADO (esta completado al enviar nuevos jobs hijos)
+    try:
+        job_service.update_status(job.id, JobStatus.DONE)
+        logger.info(f"✅ AUTO-REFRAME job {job.id} completed successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to update parent job {job.id} status: {e}")
+        job_service.update_status(job.id, JobStatus.FAILED, str(e))
+
+
+def handle_reframe(job, payload, job_service, storage_service):
+    
+    result = _get_video_from_job(job, job_service, storage_service)
+    if not result:
+        # ya se actualizó el estado dentro de _get_video_from_job...
+        return
+    video, filename, video_url = result
+
+    try:
+        video_local_path = handle_reframe_pipeline(job, payload, filename, video_url)
     except Exception as e:
         logger.error(f"❌ Job {job.id} failed during pipeline execution: {e}")
         job_service.update_status(job.id, JobStatus.FAILED, str(e))
@@ -248,7 +321,7 @@ def worker_loop():
 
         try:
             #job_service = JobService(db) Falta desacoplarlo de pydantic y los esquemas para poder usarlo!
-            job_service = VideoWorkerService(db)
+            job_service = VideoWorkerService(db, storage_service, queue_service)
 
             handle_job(
                 payload=payload,

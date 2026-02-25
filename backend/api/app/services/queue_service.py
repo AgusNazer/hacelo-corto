@@ -1,5 +1,6 @@
 import json
 from app.core.logging import setup_logging
+from app.models.enums import JobType
 
 logger = setup_logging()
 
@@ -27,7 +28,7 @@ class QueueService:
             "end_sec": end_sec,
             "output_style": output_style,
             "content_profile": content_profile,
-            "type": "REFRAME",
+            "type": JobType.REFRAME,
         }
         self.redis.push_to_queue("reframe_queue", payload)
 

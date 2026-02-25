@@ -42,6 +42,7 @@ async def reframe_video(
     return service.reframe_video(
         video_id=video_id,
         user_id=current_user.id,
+        job_type=body.job_type,
         start_sec=body.start_sec,
         end_sec=body.end_sec,
         crop_to_vertical=body.crop_to_vertical,

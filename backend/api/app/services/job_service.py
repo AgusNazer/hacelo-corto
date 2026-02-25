@@ -112,6 +112,7 @@ class JobService:
         allow_reuse: bool,
         output_style: Literal["vertical", "speaker_split"] = "vertical",
         content_profile: Literal["auto", "interview", "sports", "music"] = "auto",
+        job_type: JobType = JobType.REFRAME
     ) -> JobReframeResponse:
         
         self._validate_time_range(start_sec, end_sec)
@@ -176,7 +177,7 @@ class JobService:
         job = Job(
             user_id=user_id,
             video_id=video.id,
-            job_type=JobType.REFRAME,
+            job_type=job_type,
             status=JobStatus.PENDING,
         )
 
@@ -564,6 +565,7 @@ class JobService:
         self,
         video_id: UUID,
         user_id: UUID,
+        job_type: JobType,
         start_sec: int,
         end_sec: int,
         crop_to_vertical: bool | None = None,
@@ -578,16 +580,7 @@ class JobService:
 
         self._validate_time_range(start_sec, end_sec)
 
-        logger.info(
-            "Reframe options for video %s: crop_to_vertical=%s subtitles=%s face_tracking=%s color_filter=%s output_style=%s content_profile=%s",
-            video_id,
-            crop_to_vertical,
-            subtitles,
-            face_tracking,
-            color_filter,
-            output_style,
-            content_profile,
-        )
+        logger.info(f"Reframe for video: {video_id}, job_type: {job_type}")
 
         return self._create_reframe_job(
             video=video,
@@ -597,6 +590,7 @@ class JobService:
             allow_reuse=False,
             output_style=output_style,
             content_profile=content_profile,
+            job_type=job_type,
         )
 
     def auto_reframe_video(
