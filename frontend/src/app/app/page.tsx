@@ -79,7 +79,7 @@ function isTerminalStatus(status: string) {
 function normalizeVideoError(error: unknown, fallbackMessage: string) {
   if (error instanceof VideoApiError) {
     if (error.status === 400) {
-      return "El archivo de video es invalido o no cumple los requisitos.";
+      return error.message || "El archivo de video es invalido o no cumple los requisitos.";
     }
 
     if (error.status === 401) {

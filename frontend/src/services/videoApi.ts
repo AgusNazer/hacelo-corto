@@ -218,16 +218,11 @@ export const videoApi = {
     }
   ) {
     const body: Record<string, unknown> = {
+      clips_count: options?.clipsCount ?? 3,
+      clip_duration_sec: options?.clipDurationSec ?? 15,
       output_style: options?.outputStyle ?? "vertical",
       content_profile: options?.contentProfile ?? "auto"
     };
-
-    if (typeof options?.clipsCount === "number") {
-      body.clips_count = options.clipsCount;
-    }
-    if (typeof options?.clipDurationSec === "number") {
-      body.clip_duration_sec = options.clipDurationSec;
-    }
 
     const auto2Response = await fetch(`${apiBaseUrl}/api/v1/jobs/reframe/${videoId}/auto2`, {
       method: "POST",
