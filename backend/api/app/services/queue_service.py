@@ -28,7 +28,7 @@ class QueueService:
             "end_sec": end_sec,
             "output_style": output_style,
             "content_profile": content_profile,
-            "type": JobType.REFRAME,
+            "type": JobType.REFRAME.value,
         }
         self.redis.push_to_queue("reframe_queue", payload)
 
