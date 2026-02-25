@@ -14,6 +14,7 @@ from app.schemas.job import (
     JobReframeResponse,
     JobStatusResponse,
     JobAutoReframeResponse,
+    JobAutoReframeResponse2,
     JobAutoReframeItem,
     UserClipDetailResponse,
     UserClipsResponse,
@@ -208,6 +209,60 @@ class JobService:
             filename=video.original_filename,
             start_sec=start_sec,
             end_sec=end_sec,
+            created_at=job.created_at,
+        )
+
+    def _create_auto_reframe_job(
+        self,
+        *,
+        video: Video,
+        user_id: UUID,
+        clips_count: int | None,
+        clip_duration_sec: int | None,
+        allow_reuse: bool,
+        output_style: Literal["vertical", "speaker_split"] = "vertical",
+        content_profile: Literal["auto", "interview", "sports", "music"] = "auto",
+        job_type: JobType = JobType.AUTO_REFRAME    
+    ) -> JobReframeResponse:    
+        
+        if not clips_count or clips_count < 1:
+            raise JobParameterException("clips_count must be at least 1")
+        if clip_duration_sec is not None and clip_duration_sec < 5:
+            raise JobParameterException("clip_duration_sec must be at least 5 seconds") 
+        
+        job = Job(
+            user_id=user_id,
+            video_id=video.id,
+            job_type=job_type,
+            status=JobStatus.PENDING,
+        )
+
+        self.db.add(job)
+        self.db.commit()
+        self.db.refresh(job)
+
+        try:
+            self.queue.publish_auto_reframe_job(
+                job_id=str(job.id),
+                video_id=str(video.id),
+                user_id=str(user_id),
+                clips_count=clips_count,
+                clip_duration_sec=clip_duration_sec,
+                output_style=output_style,
+                content_profile=content_profile,
+            )
+        except Exception as e:
+            job.status = JobStatus.FAILED
+            job.error_message = "Error enviando job a la cola"
+            self.db.commit()
+            raise e
+
+        return JobAutoReframeResponse2(
+            job_id=job.id,
+            job_type=job.job_type,
+            status=job.status,
+            filename=video.original_filename,
+            total_jobs=clips_count or 0,
             created_at=job.created_at,
         )
 
@@ -592,6 +647,34 @@ class JobService:
             content_profile=content_profile,
             job_type=job_type,
         )
+
+
+    def auto_reframe_video2(
+        self,
+        video_id: UUID,
+        user_id: UUID,
+        job_type: JobType.AUTO_REFRAME,
+        clips_count: int | None,
+        clip_duration_sec: int | None,
+        output_style: Literal["vertical", "speaker_split"] = "vertical",
+        content_profile: Literal["auto", "interview", "sports", "music"] = "auto",
+    ) -> JobReframeResponse:
+        
+        video = self._get_user_video(video_id, user_id)
+
+        logger.info(f"AUTO_REFRAME for video: {video_id}, job_type: {JobType.AUTO_REFRAME}")
+
+        return self._create_auto_reframe_job(
+            video=video,
+            user_id=user_id,
+            clips_count=clips_count,
+            clip_duration_sec=clip_duration_sec,
+            allow_reuse=False,
+            output_style=output_style,
+            content_profile=content_profile,
+            job_type=JobType.AUTO_REFRAME,
+        )
+
 
     def auto_reframe_video(
         self,

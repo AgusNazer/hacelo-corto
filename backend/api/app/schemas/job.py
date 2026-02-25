@@ -99,6 +99,15 @@ class JobAutoReframeResponse(BaseSchema):
     jobs: list[JobAutoReframeItem]
 
 
+class JobAutoReframeResponse2(BaseSchema):
+    job_id: UUID
+    job_type: JobType
+    status: JobStatus
+    filename: str
+    total_jobs: int
+    created_at: datetime
+    
+
 class UserClipItem(BaseSchema):
     job_id: UUID
     video_id: UUID

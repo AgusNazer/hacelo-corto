@@ -231,9 +231,9 @@ def handle_auto_reframe(job, payload, job_service, storage_service):
                 job_type=JobType.REFRAME
             )
             queue_service.publish_reframe_job(
-                job_id=new_job.id,
-                video_id=video.id,
-                user_id=job.user_id,
+                job_id=str(new_job.id),
+                video_id=str(video.id),
+                user_id=str(job.user_id),
                 start_sec=start_sec,
                 end_sec=end_sec,
                 output_style=payload.get("output_style", "vertical"),

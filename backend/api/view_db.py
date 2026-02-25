@@ -73,6 +73,7 @@ else:
         print(f"🎥 Video ID:   {job.video_id}")
         print(f"🗃️ Job Type:   {job.job_type}")
         print(f"ℹ️ Status:     {job.status}")
+        print(f"❌ Error_msg:  {job.error_message}")
         print(f"📁 Output:     {job.output_path}")
         print(f"📅 Creado:     {job.created_at}")
         print("-" * 60)
