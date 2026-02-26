@@ -137,6 +137,7 @@ Rama de trabajo: `feature/frontend-sync-upload-develop`.
 - Se mejoro la grilla de `clips generados` en Home para que una sola tarjeta no se estire a pantalla completa (cards con ancho consistente desde el primer render).
 - Se removio la opcion lateral `Settings IA` del sidebar.
 - Se creo `frontend/src/app/app/export/page.tsx` como nueva vista de exportacion con resumen de estado, listado de clips listos, descarga directa y copia de link.
+- Se corrigio Home para que la lista de resultados combine `createdJobs` con clips ya visibles en biblioteca del mismo `video_id`, evitando que se muestre solo 1 clip hasta recargar cuando los 3 jobs llegan de forma asincronica.
 
 ## Nota destacada
 
@@ -155,6 +156,8 @@ Rama de trabajo: `feature/frontend-sync-upload-develop`.
 - `docs(frontend): record upload and worker stability fixes`
 - `feat(frontend): polish home clips grid and add export center view`
 - `docs(frontend): update worklog with home hydration and export page`
+- `fix(frontend): sync home clips with library hydration fallback`
+- `docs(frontend): log home clip sync fix without manual refresh`
 
 ## Archivos clave
 
@@ -164,6 +167,7 @@ Rama de trabajo: `feature/frontend-sync-upload-develop`.
 - `frontend/src/components/home/GeneratedClipsSection.tsx`
 - `frontend/src/components/layout/Sidebar.tsx`
 - `frontend/src/app/app/export/page.tsx`
+- `frontend/src/app/app/page.tsx`
 - `backend/api/app/services/video_service.py`
 - `backend/worker/app/pipeline.py`
 - `docs/frontend-pr-log.md`
