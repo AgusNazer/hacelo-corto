@@ -1,11 +1,15 @@
 """Servicio para subir videos a YouTube usando YouTube Data API v3"""
 
 import logging
+import os
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 import httpx
 from fastapi import HTTPException, status
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from google.oauth2.credentials import Credentials
 
 from app.core.config import settings
 from app.models.oauth_token import OAuthToken
@@ -42,16 +46,16 @@ class YouTubeUploadService:
         privacy_status: str = "private",  # "public", "private", "unlisted"
     ) -> Dict[str, Any]:
         """
-        Sube un video a YouTube en nombre del usuario.
+        Sube un video a YouTube usando la API oficial de Google.
         
         Args:
             user_id: ID del usuario que sube el video
-            video_file_path: Ruta del archivo de video (en MinIO o local)
-            title: Título del video
-            description: Descripción del video
-            tags: Lista de tags/palabras clave
+            video_file_path: Ruta del archivo de video
+            title: Título del video (máx 100 caracteres)
+            description: Descripción del video (máx 5000 caracteres)
+            tags: Lista de tags/palabras clave (máx 500 caracteres total)
             category_id: ID de categoría de YouTube
-            privacy_status: Privacidad del video
+            privacy_status: "public", "private", o "unlisted"
             
         Returns:
             Dict con información del video subido (id, url, etc.)
@@ -59,88 +63,104 @@ class YouTubeUploadService:
         Raises:
             HTTPException: Si el usuario no tiene tokens o hay error en YouTube
         """
-        # 1. Obtener y verificar token de YouTube
+        # 1. Verificar que el archivo existe
+        if not os.path.exists(video_file_path):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Archivo de video no encontrado: {video_file_path}"
+            )
+        
+        # 2. Obtener y verificar token de YouTube
         access_token = await self._get_valid_access_token(user_id)
         
-        # 2. Preparar metadata del video
-        metadata = {
+        # 3. Crear credenciales de Google
+        credentials = Credentials(
+            token=access_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=settings.GOOGLE_CLIENT_ID,
+            client_secret=settings.GOOGLE_CLIENT_SECRET,
+        )
+        
+        # 4. Construir cliente de YouTube API
+        youtube = build("youtube", "v3", credentials=credentials)
+        
+        # 5. Preparar metadata del video
+        body = {
             "snippet": {
-                "title": title,
-                "description": description,
+                "title": title[:100],  # YouTube limita a 100 caracteres
+                "description": description[:5000],  # Límite 5000 caracteres
                 "tags": tags or [],
                 "categoryId": category_id,
             },
             "status": {
                 "privacyStatus": privacy_status,
-                "selfDeclaredMadeForKids": False,  # Requerido por YouTube
+                "selfDeclaredMadeForKids": False,
             }
         }
         
-        # 3. Subir video a YouTube
-        logger.info(f"📤 Subiendo video a YouTube para user_id={user_id}")
+        logger.info(f"📤 Subiendo video '{title}' a YouTube para user_id={user_id}")
+        logger.info(f"📁 Archivo: {video_file_path} ({os.path.getsize(video_file_path)} bytes)")
         
         try:
-            async with httpx.AsyncClient(timeout=300.0) as client:  # 5 min timeout
-                # Para simplificar, usamos upload directo (videos < 5MB)
-                # Para videos grandes deberías implementar resumable upload
-                
-                # Leer archivo de video (NOTA: en producción deberías bajarlo de MinIO)
-                with open(video_file_path, 'rb') as video_file:
-                    video_bytes = video_file.read()
-                
-                # Request multipart: metadata + video
-                response = await client.post(
-                    self.YOUTUBE_UPLOAD_URL,
-                    params={
-                        "part": "snippet,status",
-                        "uploadType": "multipart",  # Para videos pequeños
-                    },
-                    headers={
-                        "Authorization": f"Bearer {access_token}",
-                    },
-                    files={
-                        "video": ("video.mp4", video_bytes, "video/mp4"),
-                    },
-                    data={
-                        "snippet": str(metadata["snippet"]),
-                        "status": str(metadata["status"]),
-                    }
-                )
-                
-                if response.status_code != 200:
-                    error_detail = response.text
-                    logger.error(f"❌ YouTube upload error: {response.status_code}")
-                    logger.error(f"📄 Response: {error_detail}")
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Error al subir video a YouTube: {error_detail}"
-                    )
-                
-                video_data = response.json()
-                video_id = video_data.get("id")
-                video_url = f"https://www.youtube.com/watch?v={video_id}"
-                
-                logger.info(f"✅ Video subido exitosamente: {video_url}")
-                
-                return {
-                    "video_id": video_id,
-                    "video_url": video_url,
-                    "title": title,
-                    "privacy_status": privacy_status,
-                    "uploaded_at": datetime.utcnow().isoformat(),
-                }
-                
-        except httpx.HTTPError as e:
-            logger.error(f"❌ HTTP error al subir a YouTube: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error de conexión con YouTube: {str(e)}"
+            # 6. Preparar media upload (con resumable upload para videos grandes)
+            media = MediaFileUpload(
+                video_file_path,
+                mimetype="video/*",
+                resumable=True,
+                chunksize=1024 * 1024  # 1MB chunks
             )
+            
+            # 7. Ejecutar upload
+            insert_request = youtube.videos().insert(
+                part=",".join(body.keys()),
+                body=body,
+                media_body=media
+            )
+            
+            # Upload con progreso (para resumable uploads)
+            response = None
+            while response is None:
+                status_obj, response = insert_request.next_chunk()
+                if status_obj:
+                    progress = int(status_obj.progress() * 100)
+                    logger.info(f"📊 Upload progress: {progress}%")
+            
+            # 8. Extraer información del video subido
+            video_id = response.get("id")
+            video_url = f"https://www.youtube.com/watch?v={video_id}"
+            
+            logger.info(f"✅ Video subido exitosamente a YouTube!")
+            logger.info(f"🔗 URL: {video_url}")
+            logger.info(f"🆔 Video ID: {video_id}")
+            
+            return {
+                "video_id": video_id,
+                "video_url": video_url,
+                "title": response["snippet"]["title"],
+                "description": response["snippet"]["description"],
+                "privacy_status": response["status"]["privacyStatus"],
+                "published_at": response.get("snippet", {}).get("publishedAt"),
+                "thumbnail_url": response.get("snippet", {}).get("thumbnails", {}).get("default", {}).get("url"),
+            }
+            
         except Exception as e:
-            logger.error(f"❌ Error inesperado al subir a YouTube: {str(e)}")
+            logger.error(f"❌ Error al subir video a YouTube: {str(e)}")
+            logger.error(f"📄 Error type: {type(e).__name__}")
+            
+            # Manejo específico de errores de YouTube
+            error_message = str(e)
+            if "quota" in error_message.lower():
+                detail = "Cuota de YouTube API excedida. Intenta más tarde."
+            elif "authentication" in error_message.lower():
+                detail = "Error de autenticación con YouTube. Reconecta tu cuenta."
+            elif "permission" in error_message.lower():
+                detail = "Sin permisos suficientes. Verifica los scopes de YouTube."
+            else:
+                detail = f"Error al subir video: {error_message}"
+            
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error inesperado: {str(e)}"
+                detail=detail
             )
     
     async def _get_valid_access_token(self, user_id: str) -> str:
