@@ -131,8 +131,6 @@ Rama de trabajo: `feature/frontend-sync-upload-develop`.
 - Se agrego polling temporal de biblioteca tras generar jobs automaticos para hidratar clips cuando el backend procesa de forma asincronica y no retorna jobs individuales de inmediato.
 - Se envio `clips_count` y `clip_duration_sec` por defecto desde frontend al crear jobs automaticos para evitar `400` en `auto2` cuando backend exige esos parametros.
 - Se mejoro el mensaje de error en Home para mostrar detalle real de backend (ya no se tapa siempre con mensaje generico de archivo invalido).
-- Se habilito en backend upload de videos `.webm` cuando el navegador envia `application/octet-stream` (caso reproducido con drag/drop en Chrome).
-- Se movio el directorio temporal del worker a `/tmp/worker` para evitar crash por permisos en `backend/tmp` (`PermissionError: tmp/normalized`).
 - Se ajusto Home para que la hidratacion de clips siga activa hasta completar la cantidad esperada de resultados, evitando que aparezca solo el primer clip si el resto termina mas tarde.
 - Se mejoro la grilla de `clips generados` en Home para que una sola tarjeta no se estire a pantalla completa (cards con ancho consistente desde el primer render).
 - Se removio la opcion lateral `Settings IA` del sidebar.
@@ -141,16 +139,14 @@ Rama de trabajo: `feature/frontend-sync-upload-develop`.
 
 ## Nota destacada
 
-- Riesgo para produccion detectado: si el worker usa un volumen/path sin permisos de escritura para temporales, el pipeline puede fallar con `PermissionError` y dejar jobs sin completar (impacta generacion de clips).
-- Mitigacion aplicada en esta rama: uso de directorio temporal seguro `/tmp/worker` en `backend/worker/app/pipeline.py`.
-- Seguimiento recomendado para backend: parametrizar y validar el path temporal por entorno (ej. `WORKER_OUTPUT_DIR`) y verificar permisos del volumen en deploy.
+- Dependencia backend detectada fuera del alcance de este PR frontend: si el worker usa un volumen/path sin permisos de escritura para temporales, el pipeline puede fallar con `PermissionError` y dejar jobs sin completar.
+- Seguimiento recomendado para PR backend: parametrizar y validar el path temporal por entorno (ej. `WORKER_OUTPUT_DIR`) y verificar permisos del volumen en deploy.
 
 ## Commits realizados
 
 - `fix(frontend): align timeline clip creation with backend constraints`
 - `fix(frontend): support auto2 job orchestration and async clip hydration`
 - `fix(frontend): send auto2 defaults and surface backend 400 details`
-- `fix(backend): accept octet-stream video uploads and avoid worker tmp permission crashes`
 - `docs(frontend): log timeline compatibility updates on develop sync`
 - `docs(frontend): update worklog with auto2 integration fixes`
 - `docs(frontend): record upload and worker stability fixes`
@@ -168,8 +164,6 @@ Rama de trabajo: `feature/frontend-sync-upload-develop`.
 - `frontend/src/components/layout/Sidebar.tsx`
 - `frontend/src/app/app/export/page.tsx`
 - `frontend/src/app/app/page.tsx`
-- `backend/api/app/services/video_service.py`
-- `backend/worker/app/pipeline.py`
 - `docs/frontend-pr-log.md`
 
 ## Validaciones locales
