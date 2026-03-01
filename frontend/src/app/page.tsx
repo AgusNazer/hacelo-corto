@@ -2,136 +2,291 @@ import Link from "next/link";
 import { HaceloCortoLogo } from "@/src/components/branding/HaceloCortoLogo";
 
 export default function HomePage() {
+  const snapshot = [
+    { label: "Estado", value: "MVP funcional" },
+    { label: "Flujo", value: "Upload -> Jobs -> Library" },
+    { label: "Salida", value: "Clips verticales 9:16" }
+  ];
+
+  const perfiles = [
+    {
+      titulo: "Auto detectar",
+      descripcion: "Perfil por defecto en Home. Crea clips automaticos sin configurar reglas manuales.",
+      tono: "cyan" as const
+    },
+    {
+      titulo: "Entrevista",
+      descripcion: "Prioriza tomas estables para dialogo y contenido tipo talking head.",
+      tono: "mint" as const
+    },
+    {
+      titulo: "Deportes",
+      descripcion: "Usa framing mas abierto para no perder accion en escenas rapidas.",
+      tono: "violet" as const
+    },
+    {
+      titulo: "Musica",
+      descripcion: "Ajuste para clips ritmicos y momentos destacados de performance.",
+      tono: "magenta" as const
+    }
+  ];
+
+  const demos = [
+    {
+      titulo: "Demo 01 - Upload 9:16 modo Musica",
+      detalle: "Flujo Home: upload + perfil Musica.",
+      filename: "video1_musica.mp4",
+      path: "/landing-demos/video1_musica.mp4"
+    },
+    {
+      titulo: "Demo 02 - Upload 9:16 modo Deportes",
+      detalle: "Diferencias de framing con perfil Deportes.",
+      filename: "video2_entrevista.mp4",
+      path: "/landing-demos/video2_entrevista.mp4"
+    },
+    {
+      titulo: "Demo 03 - Ajuste manual en Timeline",
+      detalle: "Recorte manual y envio de job desde timeline.",
+      filename: "video3_timeline.mp4",
+      path: "/landing-demos/video3_timeline.mp4"
+    }
+  ];
+
+  const faq = [
+    {
+      q: "Que esta funcionando hoy en la app?",
+      a: "Login/registro, upload, jobs automaticos, edicion por timeline, biblioteca de clips/videos y centro de exportacion."
+    },
+    {
+      q: "La app ya publica en redes automaticamente?",
+      a: "Todavia no. Hoy llega hasta generar y organizar clips; la parte de publicacion social sigue en preparacion."
+    },
+    {
+      q: "Puedo usar perfiles de contenido?",
+      a: "Si. En Home hay perfiles Auto, Entrevista, Deportes y Musica, junto con estilo Vertical o Speaker Split."
+    },
+    {
+      q: "Donde veo los resultados de cada job?",
+      a: "En Panel y Biblioteca, con estados de cola/proceso/listo/error y acceso a vista de compartir/exportar."
+    }
+  ];
+
   return (
-    <div className="relative min-h-screen overflow-hidden px-4 pb-20 pt-8 sm:px-8">
+    <div className="relative min-h-screen overflow-hidden px-4 pb-24 pt-8 sm:px-8">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-16 top-8 h-72 w-72 rounded-full bg-neon-cyan/15 blur-3xl" />
-        <div className="absolute right-0 top-24 h-72 w-72 rounded-full bg-neon-violet/18 blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-neon-magenta/12 blur-3xl" />
+        <div className="absolute -left-20 top-4 h-80 w-80 rounded-full bg-neon-cyan/16 blur-3xl" />
+        <div className="absolute right-[-4rem] top-16 h-96 w-96 rounded-full bg-neon-violet/16 blur-3xl" />
+        <div className="absolute bottom-[-4rem] left-1/3 h-80 w-80 rounded-full bg-neon-magenta/12 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto w-full max-w-[1220px] space-y-10">
+      <div className="relative mx-auto w-full max-w-[1220px] space-y-12">
         <header className="animate-fade-up flex items-center justify-between rounded-2xl border border-white/10 bg-night-900/60 px-4 py-3 backdrop-blur-xl">
           <Link href="/" className="inline-flex items-center" aria-label="Ir al home">
-            <HaceloCortoLogo variant="compact" className="h-8 w-auto text-white sm:h-9" title="Hacelo Corto" />
+            <HaceloCortoLogo variant="wordmark" className="h-8 w-auto text-white sm:h-9" title="Hacelo Corto" />
           </Link>
           <div className="flex items-center gap-2">
             <Link
               href="/auth/login"
-              className="rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white/90 transition hover:bg-white/10"
+              className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white/90 transition hover:bg-white/10"
             >
               Ingresar
             </Link>
             <Link
               href="/auth/register"
-              className="inline-flex items-center gap-2 rounded-lg border border-neon-cyan/45 bg-neon-cyan/15 px-4 py-2 text-sm font-semibold text-neon-cyan transition hover:bg-neon-cyan/25"
+              className="inline-flex items-center gap-2 rounded-xl border border-neon-cyan/45 bg-neon-cyan/15 px-4 py-2 text-sm font-semibold text-neon-cyan transition hover:bg-neon-cyan/25"
             >
               Crear cuenta
-              <span aria-hidden="true">{">"}</span>
+              <span aria-hidden="true">*</span>
             </Link>
           </div>
         </header>
 
-        <section className="grid items-center gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-          <article className="animate-fade-up rounded-3xl border border-white/10 bg-night-900/60 p-6 shadow-panel sm:p-8 [animation-delay:80ms]">
+        <section className="animate-fade-up rounded-3xl border border-white/10 bg-night-900/60 p-7 shadow-panel sm:p-10 [animation-delay:80ms]">
+          <div className="mx-auto max-w-5xl text-center">
             <div className="mb-5 flex flex-wrap gap-2">
-              <Tag label="Registro rapido" color="cyan" />
-              <Tag label="Upload horizontal" color="mint" />
-              <Tag label="Jobs en progreso" color="violet" />
+              <Tag label="MVP en produccion interna" color="cyan" />
+              <Tag label="Dashboard operativo" color="mint" />
+              <Tag label="Iteracion semanal" color="violet" />
             </div>
 
-            <h1 className="font-display text-[clamp(2.05rem,3.8vw,3.7rem)] leading-[1.05] tracking-tight text-white">
-              Convierte videos largos en shorts verticales listos para publicar.
+            <h1 className="font-display text-[clamp(2.4rem,7.5vw,6.6rem)] leading-[0.96] tracking-tight text-white">
+              Estado Real de
+              <span className="bg-gradient-to-r from-neon-cyan via-neon-magenta to-neon-violet bg-clip-text text-transparent">
+                {" "}
+                Hacelo Corto
+              </span>
             </h1>
-            <p className="mt-4 max-w-2xl text-[clamp(1rem,1.35vw,1.18rem)] leading-relaxed text-white/78">
-              Sube un video, deja que la IA detecte momentos clave, sigue el progreso de tus jobs y descarga resultados en
-              formato social.
+            <p className="mx-auto mt-5 max-w-3xl text-[clamp(1rem,1.35vw,1.24rem)] leading-relaxed text-white/78">
+              Esta landing refleja lo que existe hoy en la app: subir video, generar clips automaticos con perfiles,
+              ajustar en timeline, revisar en biblioteca y exportar.
             </p>
 
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/auth/register"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-neon-cyan/45 bg-neon-cyan/15 px-6 text-sm font-semibold text-neon-cyan transition hover:bg-neon-cyan/25"
-              >
-                Empezar gratis
-                <span aria-hidden="true">*</span>
-              </Link>
-              <Link
-                href="/app"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-neon-violet/45 bg-neon-violet/15 px-6 text-sm font-semibold text-white transition hover:bg-neon-violet/25"
-              >
-                Probar rutas seguras
-                <span aria-hidden="true">[]</span>
-              </Link>
-            </div>
+            <article className="mx-auto mt-8 max-w-3xl rounded-2xl border border-white/15 bg-night-800/65 p-3">
+              <div className="flex flex-col gap-3 md:flex-row">
+                <div className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-white/70">
+                  Home: upload + estilo de clip + perfil de contenido + estado de jobs.
+                </div>
+                <Link
+                  href="/auth/register"
+                  className="inline-flex h-12 items-center justify-center rounded-xl border border-neon-cyan/45 bg-neon-cyan/15 px-6 text-sm font-semibold text-neon-cyan transition hover:bg-neon-cyan/25"
+                >
+                  Crear cuenta y probar
+                </Link>
+              </div>
+              <div className="mt-3 flex flex-wrap justify-center gap-2 text-xs text-white/60">
+                <span className="rounded-lg border border-white/15 bg-white/5 px-2 py-1">/app panel</span>
+                <span className="rounded-lg border border-white/15 bg-white/5 px-2 py-1">/app/timeline</span>
+                <span className="rounded-lg border border-white/15 bg-white/5 px-2 py-1">/app/library</span>
+                <span className="rounded-lg border border-white/15 bg-white/5 px-2 py-1">/app/export</span>
+              </div>
+            </article>
 
             <div className="mt-7 grid gap-3 sm:grid-cols-3">
-              <Metric title="+40%" subtitle="retencion" />
-              <Metric title="4x" subtitle="clips por video" />
-              <Metric title="1 panel" subtitle="todo el flujo" />
-            </div>
-          </article>
-
-          <article className="animate-fade-up rounded-3xl border border-white/10 bg-night-900/60 p-5 shadow-panel sm:p-6 [animation-delay:140ms]">
-            <p className="text-xs uppercase tracking-[0.22em] text-neon-cyan/70">Sprint 1</p>
-            <h2 className="mt-2 font-display text-[clamp(1.4rem,1.9vw,2rem)] text-white">Historias priorizadas</h2>
-
-            <div className="mt-4 space-y-3">
-              {[
-                "HU registro de usuario y login",
-                "Subida de video horizontal",
-                "Lista de jobs y estado en progreso",
-                "Descarga de resultado final",
-                "Mensajes claros en caso de error"
-              ].map((item) => (
-                <article key={item} className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-white/85">
-                  <div className="inline-flex items-center gap-2">
-                    <span aria-hidden="true" className="text-neon-mint">
-                      +
-                    </span>
-                    {item}
-                  </div>
-                </article>
+              {snapshot.map((item) => (
+                <Metric key={item.label} title={item.value} subtitle={item.label} />
               ))}
             </div>
-          </article>
+          </div>
         </section>
 
-        <section className="animate-fade-up rounded-3xl border border-white/10 bg-night-900/60 p-6 shadow-panel sm:p-7 [animation-delay:260ms]">
+        <section className="animate-fade-up rounded-3xl border border-white/10 bg-night-900/60 p-6 shadow-panel sm:p-7 [animation-delay:130ms]">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-white/55">Workflow</p>
-              <h3 className="font-display text-[clamp(1.7rem,2.8vw,2.35rem)] text-white">De upload a descarga en 4 pasos</h3>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/55">Flujo MVP</p>
+              <h2 className="font-display text-[clamp(1.7rem,2.6vw,2.6rem)] text-white">Como se usa hoy en el producto</h2>
             </div>
             <span className="inline-flex items-center gap-2 rounded-lg border border-neon-cyan/45 bg-neon-cyan/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-neon-cyan">
               <span aria-hidden="true">*</span>
-              MVP ready
+              basado en rutas reales
             </span>
           </div>
 
           <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <StepBox
               step="01"
-              title="Sube tu video"
-              detail="Carga horizontal en pocos segundos con validacion inicial."
+              title="Sube video"
+              detail="Desde Panel, cargas un archivo y el backend registra el video para procesamiento."
             />
             <StepBox
               step="02"
-              title="Procesa con IA"
-              detail="Recorte vertical, deteccion de foco y subtitulos automaticos."
+              title="Genera jobs"
+              detail="Seleccionas estilo (vertical o speaker split) y perfil (auto, entrevista, deportes, musica)."
             />
             <StepBox
               step="03"
-              title="Monitorea jobs"
-              detail="Consulta estado queued, processing, done o error."
+              title="Sigue estado"
+              detail="Ves cola/proceso/listo/error en panel y biblioteca con polling y refresco de resultados."
             />
             <StepBox
               step="04"
-              title="Descarga y publica"
-              detail="Obtiene clips finales listos para TikTok, Reels y Shorts."
+              title="Edita y exporta"
+              detail="Puedes ajustar timeline manual y cerrar flujo desde biblioteca o centro de exportacion."
             />
           </div>
         </section>
+
+        <section className="animate-fade-up rounded-3xl border border-white/10 bg-night-900/60 p-6 shadow-panel sm:p-7 [animation-delay:260ms]">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/55">Perfiles y estilos</p>
+              <h3 className="font-display text-[clamp(1.7rem,2.8vw,2.35rem)] text-white">Configuraciones activas en Home</h3>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-lg border border-neon-cyan/45 bg-neon-cyan/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-neon-cyan">
+              <span aria-hidden="true">#</span>
+              sincronizado con app
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {perfiles.map((perfil) => (
+              <UseCaseCard key={perfil.titulo} titulo={perfil.titulo} descripcion={perfil.descripcion} tono={perfil.tono} />
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-white/12 bg-night-800/70 p-4 text-sm text-white/75">
+            Hoy el panel prioriza `Auto detectar`; en timeline puedes ajustar rango temporal y opciones avanzadas para recorte
+            manual cuando el caso necesita mas control.
+          </div>
+        </section>
+
+        <section className="animate-fade-up rounded-3xl border border-white/10 bg-night-900/60 p-6 shadow-panel sm:p-7 [animation-delay:320ms]">
+          <h3 className="text-center font-display text-[clamp(1.7rem,2.7vw,2.7rem)] text-white">Espacios para demos de producto</h3>
+          <p className="mx-auto mt-2 max-w-3xl text-center text-sm text-white/72">
+            Esta seccion queda preparada para que subas capturas o videos cortos de flujos reales, por ejemplo modo Musica y
+            modo Deportes en salida 9:16.
+          </p>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {demos.map((demo) => (
+              <DemoSlot
+                key={demo.titulo}
+                titulo={demo.titulo}
+                detalle={demo.detalle}
+                filename={demo.filename}
+                videoPath={demo.path}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="animate-fade-up rounded-3xl border border-white/10 bg-night-900/60 p-6 shadow-panel sm:p-7 [animation-delay:360ms]">
+          <div className="grid gap-5 lg:grid-cols-[0.52fr_1fr]">
+            <h3 className="font-display text-[clamp(1.6rem,3vw,2.7rem)] text-white">Preguntas frecuentes</h3>
+            <div className="space-y-3">
+              {faq.map((item) => (
+                <details key={item.q} className="rounded-xl border border-white/12 bg-night-800/70 px-4 py-3 text-white/85">
+                  <summary className="cursor-pointer list-none text-base font-semibold text-white">{item.q}</summary>
+                  <p className="mt-2 text-sm text-white/70">{item.a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="animate-fade-up rounded-3xl border border-white/10 bg-night-900/70 p-8 shadow-panel [animation-delay:420ms]">
+          <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-neon-violet/12 via-neon-cyan/10 to-neon-mint/12 p-8 text-center">
+            <h3 className="font-display text-[clamp(2rem,4vw,3.2rem)] text-white">Crea clips profesionales hoy</h3>
+            <p className="mx-auto mt-3 max-w-2xl text-white/75">
+              Hoy ya puedes probar el flujo end-to-end del MVP y acompañar el progreso con demos reales de tu equipo.
+            </p>
+            <Link
+              href="/auth/register"
+              className="mx-auto mt-6 inline-flex h-12 items-center justify-center rounded-xl border border-neon-cyan/45 bg-neon-cyan/15 px-7 text-sm font-semibold text-neon-cyan transition hover:bg-neon-cyan/25"
+            >
+              Crear cuenta y empezar
+            </Link>
+          </div>
+        </section>
+
+        <footer className="grid gap-5 rounded-3xl border border-white/10 bg-night-900/55 p-6 md:grid-cols-3">
+          <div>
+            <p className="font-display text-xl text-white">Hacelo Corto</p>
+            <p className="mt-2 text-sm text-white/65">Producto en evolucion continua con foco en recorte vertical y flujo de trabajo real.</p>
+          </div>
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-white/70">Producto</p>
+            <ul className="mt-2 space-y-1 text-sm text-white/70">
+              <li>Panel de upload y jobs</li>
+              <li>Timeline para recorte manual</li>
+              <li>Biblioteca y exportacion</li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-white/70">Acceso</p>
+            <ul className="mt-2 space-y-1 text-sm text-white/70">
+              <li>
+                <Link href="/auth/login" className="hover:text-white">
+                  Ingresar
+                </Link>
+              </li>
+              <li>
+                <Link href="/auth/register" className="hover:text-white">
+                  Crear cuenta
+                </Link>
+              </li>
+            </ul>
+          </div>
+        </footer>
       </div>
     </div>
   );
@@ -156,12 +311,66 @@ function Metric({ title, subtitle }: { title: string; subtitle: string }) {
   );
 }
 
+function UseCaseCard({
+  titulo,
+  descripcion,
+  tono
+}: {
+  titulo: string;
+  descripcion: string;
+  tono: "cyan" | "violet" | "mint" | "magenta";
+}) {
+  const tonos = {
+    cyan: "border-neon-cyan/35 bg-neon-cyan/12",
+    violet: "border-neon-violet/35 bg-neon-violet/12",
+    mint: "border-neon-mint/35 bg-neon-mint/12",
+    magenta: "border-neon-magenta/35 bg-neon-magenta/12"
+  };
+
+  return (
+    <article className={`rounded-xl border p-4 ${tonos[tono]}`}>
+      <div className="flex items-start justify-between gap-3">
+        <h4 className="text-lg font-semibold text-white">{titulo}</h4>
+        <span aria-hidden="true" className="text-white/65">
+          {"->"}
+        </span>
+      </div>
+      <p className="mt-2 text-sm text-white/75">{descripcion}</p>
+    </article>
+  );
+}
+
 function StepBox({ step, title, detail }: { step: string; title: string; detail: string }) {
   return (
     <article className="rounded-xl border border-white/12 bg-white/5 p-4">
       <p className="text-sm font-semibold text-neon-mint">{step}</p>
       <h4 className="mt-2 text-lg font-semibold text-white">{title}</h4>
       <p className="mt-2 text-sm text-white/75">{detail}</p>
+    </article>
+  );
+}
+
+function DemoSlot({
+  titulo,
+  detalle,
+  filename,
+  videoPath
+}: {
+  titulo: string;
+  detalle: string;
+  filename: string;
+  videoPath: string;
+}) {
+  return (
+    <article className="rounded-2xl border border-white/12 bg-night-800/70 p-4">
+      <div className="overflow-hidden rounded-xl border border-neon-cyan/25 bg-black/45">
+        <video controls preload="metadata" src={videoPath} className="aspect-video w-full object-cover" />
+      </div>
+      <div>
+        <h4 className="mt-3 text-base font-semibold text-white">{titulo}</h4>
+        <p className="mt-2 text-sm text-white/72">{detalle}</p>
+        <p className="mt-2 text-xs text-neon-cyan/80">Archivo esperado: {filename}</p>
+      </div>
     </article>
   );
 }
