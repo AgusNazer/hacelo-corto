@@ -183,3 +183,26 @@ Ejecutado en `frontend/`:
 - [x] `npm run test` OK
 - [x] `npm run build` OK
 - [x] Documentacion actualizada
+
+## Objetivo de la rama
+
+Actualizar la landing para reflejar el estado real del MVP actual y dejar preparada una seccion de demos con videos propios del equipo.
+
+Rama de trabajo: `feature/frontend-landing-mvp-sync`.
+
+## Cambios implementados
+
+- Se actualizo la landing en `frontend/src/app/page.tsx` con contenido alineado al flujo vigente (`/app`, `/app/timeline`, `/app/library`, `/app/export`).
+- Se ajustaron textos/FAQ para evitar promesas fuera del alcance actual y mostrar estado real del producto.
+- Se agrego seccion de demos en landing con reproductores preparados para archivos estaticos.
+- Se creo carpeta de assets `frontend/public/landing-demos/` con `.gitkeep` para versionar estructura.
+- Nombres esperados para demos:
+  - `video1_musica.mp4`
+  - `video2_entrevista.mp4`
+  - `video3_timeline.mp4`
+
+## Validaciones locales
+
+Ejecutado en `frontend/`:
+
+- `npm run lint` -> OK
