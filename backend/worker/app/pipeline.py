@@ -1,6 +1,7 @@
-from fileinput import filename
 import os
 import uuid
+import whisper
+import logging
 import cv2
 import math
 import ffmpeg
@@ -8,7 +9,9 @@ import librosa
 import subprocess
 import numpy as np
 from pathlib import Path
+from datetime import timedelta
 import logging
+from fileinput import filename
 
 """
 ============================
@@ -48,10 +51,11 @@ DEBUG = os.getenv("WORKER_PIPELINE_DEBUG", "false").strip().lower() in {
 }
 
 # output routes and dirs
-OUTPUT_DIR = Path(os.getenv("WORKER_OUTPUT_DIR", "/tmp/worker"))
+OUTPUT_DIR = Path("/tmp")
 NORMALIZED_VIDEO = OUTPUT_DIR / "normalized"
 PROCESSED_VIDEO = OUTPUT_DIR / "processed"
 RESULT_VIDEO = OUTPUT_DIR / "result"
+SUBTITLES = RESULT_VIDEO
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 NORMALIZED_VIDEO.mkdir(exist_ok=True)
@@ -92,13 +96,12 @@ if face_cascade.empty():
     raise RuntimeError("Failed to load face cascade classifier")
 
 # logger
-logger = logging.getLogger("pipeline")
+logger = logging.getLogger(__name__) 
 logger.propagate = True
+
+
+
 # ========================================================================
-
-
-def _mp4_filename(filename: str) -> str:
-    return f"{Path(filename).stem}.mp4"
 
 
 class CameraDirector:
@@ -213,7 +216,10 @@ class CameraDirector:
 
         if detected_x is None:
             # No subject detected → hold position
-            logger.info(f"🔔 NO SUBJECT DETECTED, CURRENT POSITION: {self.current_x}")
+
+            # Debug only...
+            #logger.info(f"🔔 NO SUBJECT DETECTED, CURRENT POSITION: {self.current_x}")
+            
             return self.current_x
 
         # Eso hace que:
@@ -296,6 +302,99 @@ class CameraDirector:
 # ========================================================================
 
 
+def generate_srt_from_audio(audio: np.ndarray, sample_rate: int, output_dir: Path, base_name: str) -> Path:
+    """
+    Genera SRT desde audio en memoria usando Whisper.
+    Devuelve path al .srt.
+    """
+
+    # Transcribir
+    model = whisper.load_model("base")
+    audio = np.copy(audio)  # copy para qu sea un array writable
+    result = model.transcribe(audio, fp16=False)
+
+    # Construir lista de segmentos
+    segments = [
+        {"start": seg["start"], "end": seg["end"], "text": seg["text"].strip()}
+        for seg in result.get("segments", [])
+    ]
+
+    # Generar SRT
+    srt_path = output_dir / f"{base_name}.srt"
+    with srt_path.open("w", encoding="utf-8") as f:
+        for idx, seg in enumerate(segments, start=1):
+            start = _format_srt_timestamp(seg["start"])
+            end = _format_srt_timestamp(seg["end"])
+            f.write(f"{idx}\n{start} --> {end}\n{seg['text']}\n\n")
+
+    return str(srt_path)
+
+def _format_srt_timestamp(seconds: float) -> str:
+    from datetime import timedelta
+    td = timedelta(seconds=seconds)
+    total_seconds = int(td.total_seconds())
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    secs = total_seconds % 60
+    millis = int((seconds - int(seconds)) * 1000)
+    return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
+
+
+def analyze_speech_activity(video_segment_path, generate_subtitles: bool = False):
+    """
+    Estimate speech activity from a normalized video segment.
+
+    Audio is extracted in-memory via FFmpeg, converted to mono 16 kHz,
+    and analyzed using RMS energy.
+
+    Returns a boolean mask aligned with video frames.
+    """
+
+    # 🎧 Extraer audio RAW en memoria
+    cmd = [
+        "ffmpeg",
+        "-loglevel",
+        "error",
+        "-i",
+        video_segment_path,
+        "-ac",
+        "1",  # mono
+        "-ar",
+        str(AUDIO_SAMPLE_RATE),  # sample rate
+        "-f",
+        "f32le",  # float32 PCM
+        "-",
+    ]
+
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    audio_bytes = process.stdout.read()
+    audio = np.frombuffer(audio_bytes, np.float32)
+
+    # 2️⃣ RMS por frame
+    sr = AUDIO_SAMPLE_RATE
+    hop = int(sr / TARGET_FPS)
+    rms = librosa.feature.rms(y=audio, hop_length=hop)[0]
+    threshold = np.median(rms) + 0.5 * np.std(rms)
+    speech_mask = rms > threshold
+
+    # Subtítulos opcionales
+    srt_path = None
+
+    if generate_subtitles:
+        base_name = Path(video_segment_path).stem
+
+        # quitar prefijo "normalized_"
+        if base_name.startswith("normalized_"):
+            base_name = base_name[len("normalized_"):]
+
+        srt_path = generate_srt_from_audio(audio, AUDIO_SAMPLE_RATE, RESULT_VIDEO, base_name)
+
+    return speech_mask, srt_path
+
+
+# ========================================================================
+
+
 def get_video_metadata(video_path):
     """
     Extracts basic metadata from a video file.
@@ -361,8 +460,8 @@ def init_stream_encoder(output_path, actual_w, actual_h, fps):
 def normalize_video_segment(
     video_path,
     filename,
-    start_sec,
-    end_sec,
+    start_sec=0,
+    end_sec=None,
     target_fps=TARGET_FPS,
     target_max_width=TARGET_MAX_W,
 ):
@@ -404,6 +503,16 @@ def normalize_video_segment(
     logger.info("🎬 VIDEO NORMALIZATION...")
 
     probe = ffmpeg.probe(video_path)
+
+    if end_sec is None:
+        duration = float(
+            probe.get("format", {}).get("duration")
+            or vstream.get("duration", 0)
+        )
+        if duration is None:
+            raise ValueError("Could not determine video duration. ")
+        end_sec = duration
+
     vstream = next(s for s in probe["streams"] if s["codec_type"] == "video")
 
     codec = vstream.get("codec_name")
@@ -549,6 +658,86 @@ def merge_audio_track(processed_video_path, normalized_video_path, filename):
             .global_args("-loglevel", "error")
             .run()
         )
+
+    return output_path
+
+
+def merge_audio_track_and_add_watermark(
+    processed_video_path: str,
+    normalized_video_path: str,
+    filename: str,
+    watermark_text: str
+) -> str:
+    """
+    Merges original audio into processed video and adds watermark text.
+
+    - Applies drawtext filter (watermark)
+    - Re-encodes video (required for filter)
+    - Encodes audio to AAC
+    - Handles videos without audio stream
+    """
+
+    # seguridad extra, limita a primeros 12 caracteres
+    watermark_text = watermark_text[:12]
+
+    output_name = f"result_{_mp4_filename(filename)}"
+    output_path = str(RESULT_VIDEO / output_name)
+
+    video_in = ffmpeg.input(processed_video_path)
+
+    # 🎨 Watermark filter applied to processed video
+    watermarked_video = video_in.video.filter(
+        "drawtext",
+        fontfile="/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        text=watermark_text,
+        x="W-tw-20",          # bottom-right
+        y="H-th-20",
+        fontsize=24,
+        fontcolor="white@0.8",
+    )
+
+    try:
+        audio_in = ffmpeg.input(normalized_video_path)
+
+        (
+            ffmpeg.output(
+                watermarked_video,
+                audio_in.audio,
+                output_path,
+                vcodec="libx264",     # required because we applied filter
+                acodec="aac",
+                preset="fast",
+                crf=23,
+                movflags="+faststart",
+                shortest=None,
+            )
+            .overwrite_output()
+            .global_args("-loglevel", "error")
+            .run()
+        )
+
+        logger.info("🔊 Audio merged + 🏷 Watermark applied")
+
+    except ffmpeg.Error:
+        logger.warning(
+            "⚠️ Input segment has no audio stream; exporting video-only result"
+        )
+
+        (
+            ffmpeg.output(
+                watermarked_video,
+                output_path,
+                vcodec="libx264",
+                preset="fast",
+                crf=23,
+                movflags="+faststart",
+            )
+            .overwrite_output()
+            .global_args("-loglevel", "error")
+            .run()
+        )
+
+    logger.info(f"✅ FINAL VIDEO EXPORTED: {output_path}")
 
     return output_path
 
@@ -860,52 +1049,16 @@ def update_active_speaker(
     return active_center, candidate_center, candidate_frames, active_lock_frames
 
 
-def analyze_speech_activity(video_segment_path):
-    """
-    Estimate speech activity from a normalized video segment.
+def _mp4_filename(filename: str) -> str:
+    return f"{Path(filename).stem}.mp4"
 
-    Audio is extracted in-memory via FFmpeg, converted to mono 16 kHz,
-    and analyzed using RMS energy.
 
-    Returns a boolean mask aligned with video frames.
-    """
-
-    # 🎧 Extraer audio RAW en memoria
-    cmd = [
-        "ffmpeg",
-        "-loglevel",
-        "error",
-        "-i",
-        video_segment_path,
-        "-ac",
-        "1",  # mono
-        "-ar",
-        str(AUDIO_SAMPLE_RATE),  # sample rate
-        "-f",
-        "f32le",  # float32 PCM
-        "-",
-    ]
-
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    audio_bytes = process.stdout.read()
-    audio = np.frombuffer(audio_bytes, np.float32)
-
-    sr = AUDIO_SAMPLE_RATE
-    hop = int(sr / TARGET_FPS)
-
-    # 📈 Energía RMS por frame de video
-    rms = librosa.feature.rms(y=audio, hop_length=hop)[0]
-
-    # 🧠 Más robusto que percentil fijo
-    threshold = np.median(rms) + 0.5 * np.std(rms)
-
-    speech_mask = rms > threshold
-
-    return speech_mask
+def _srt_filename(filename: str) -> str:
+    return f"{Path(filename).stem}.srt"
 
 
 def stream_processing(
-    video_path, filename, output_style="vertical", content_profile="interview"
+    video_path, filename, subtitles, output_style="vertical", content_profile="interview"
 ):
     """
     Main video processing pipeline.
@@ -937,7 +1090,7 @@ def stream_processing(
     else:
         encoder = init_stream_encoder(output_path, FINAL_W, FINAL_H, fps)
 
-    voice_mask = analyze_speech_activity(video_path)
+    voice_mask, srt_path = analyze_speech_activity(video_path, subtitles)
 
     frame_size = w * h * 3
     frame_idx = 0
@@ -1061,11 +1214,77 @@ def stream_processing(
     close_streams(decoder, encoder)
 
     logger.info(f"✅ VIDEO PROCESSED: {output_path}")
-    return output_path
+    return output_path, srt_path
 
+
+def generate_add_audio_video(
+    normalized_video_path,
+    filename,
+    audio_url,
+    audio_offset,
+    audio_start_sec,
+    audio_end_sec,
+    audio_volume
+):
+    
+    output_name = f"result_{_mp4_filename(filename)}"
+    output_path = str(RESULT_VIDEO / output_name)
+
+    try:
+        video_in = ffmpeg.input(normalized_video_path)
+
+        # cortar el segmento del audio
+        audio_in = ffmpeg.input(
+            audio_url,
+            ss=audio_start_sec,
+            to=audio_end_sec
+        )
+
+        # aplicar volumen
+        audio_filtered = audio_in.audio.filter("volume", audio_volume)
+
+        # offset
+        if audio_offset and audio_offset > 0:
+            delay_ms = int(audio_offset * 1000)
+            audio_filtered = audio_filtered.filter("adelay", f"{delay_ms}|{delay_ms}")
+
+        # audio original del video
+        original_audio = video_in.audio
+
+        # mezclar audios
+        mixed_audio = ffmpeg.filter(
+            [original_audio, audio_filtered],
+            "amix",
+            inputs=2,
+            duration="first",
+            dropout_transition=0
+        )
+
+        (
+            ffmpeg
+            .output(
+                video_in.video,
+                mixed_audio,
+                output_path,
+                vcodec="copy",
+                acodec="aac"
+            )
+            .overwrite_output()
+            .global_args("-loglevel", "error")
+            .run()
+        )
+
+        logger.info("🔊 Audio added successfully")
+
+    except ffmpeg.Error as e:
+        logger.error(f"FFmpeg error: {e.stderr.decode() if e.stderr else e}")
+        raise
+
+    return output_path
+    
 
 def generate_video(
-    video_path, filename, output_style="vertical", content_profile="interview"
+    video_path, filename, watermark, subtitles, output_style="vertical", content_profile="interview"
 ):
     """
     Executes the full visual processing pipeline on a normalized segment
@@ -1083,18 +1302,22 @@ def generate_video(
     """
 
     # 1. Reframe / crop / camera logic
-    no_audio_out = stream_processing(
+    no_audio_out, srt_path = stream_processing(
         video_path,
         filename,
+        subtitles,
         output_style=output_style,
         content_profile=content_profile,
     )
 
-    # 2. Merge original audio track
-    result_video_path = merge_audio_track(no_audio_out, video_path, filename)
-    logger.info(f"✅ RESULT VIDEO: {result_video_path}")
+    # 2.a Merge original audio track
+    #result_video_path = merge_audio_track(no_audio_out, video_path, filename)
 
-    return result_video_path
+    # 2.b Merge original audio track + Watermark ("Hacelo Corto")
+    result_video_path = merge_audio_track_and_add_watermark(no_audio_out, video_path, filename, watermark)
+    logger.info(f"✅ RESULT VIDEO: {result_video_path}")
+    logger.info(f"✅ RESULT SUBTITLES: {srt_path}")
+    return result_video_path, srt_path
 
 
 # ================= PIPELINE MAIN =================
@@ -1103,6 +1326,8 @@ def process(
     filename,
     start,
     end,
+    watermark,
+    subtitles,
     output_style="vertical",
     content_profile="interview",
 ):
@@ -1111,11 +1336,38 @@ def process(
         /tmp/result_{filename}
     """
     normalized_video_path = normalize_video_segment(video_path, filename, start, end)
-    result_video_path = generate_video(
+    result_video_path, result_srt_path = generate_video(
         normalized_video_path,
         filename,
+        watermark,
+        subtitles,
         output_style=output_style,
         content_profile=content_profile,
     )
-    logger.info(f"🎉 GENERATED VIDEO PATH: {result_video_path}")
+    logger.info(f"🎉 GENERATED")
+    return result_video_path, result_srt_path
+
+
+def process_add_audio(
+    video_path,
+    filename,
+    audio_url,
+    audio_offset,
+    audio_start_sec,
+    audio_end_sec,
+    audio_volume
+):
+
+    normalized_video_path = normalize_video_segment(video_path, filename)
+
+    result_video_path = generate_add_audio_video(
+        normalized_video_path,
+        filename,
+        audio_url,
+        audio_offset,
+        audio_start_sec,
+        audio_end_sec,
+        audio_volume
+    )
+    logger.info(f"🎉 GENERATED")
     return result_video_path

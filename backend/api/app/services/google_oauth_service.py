@@ -3,6 +3,8 @@
 import secrets
 import logging
 from typing import Dict, Any
+from datetime import datetime, timedelta
+from urllib.parse import urlencode
 from sqlalchemy.orm import Session
 import httpx
 
@@ -10,6 +12,7 @@ from app.core.config import settings
 from app.core.security import create_access_token
 from app.models.user import User
 from app.models.profile import Profile
+from app.models.oauth_token import OAuthToken
 from app.models.enums import UserRole
 from app.schemas.oauth import GoogleAuthURL, GoogleUserInfo
 
@@ -26,6 +29,8 @@ class GoogleOAuthService:
         "openid",
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/userinfo.profile",
+        "https://www.googleapis.com/auth/youtube.upload",  # Permiso para subir videos a YouTube
+        "https://www.googleapis.com/auth/youtube",  # Acceso completo a YouTube
     ]
 
     def __init__(self, db: Session):
@@ -49,11 +54,11 @@ class GoogleOAuthService:
             "scope": " ".join(self.SCOPES),
             "state": state,
             "access_type": "offline",  # Para refresh token
-            "prompt": "select_account",  # Forzar selección de cuenta
+            "prompt": "consent",  # Forzar pantalla de consentimiento (muestra nuevos permisos)
         }
 
-        # Construir query string manualmente
-        query_string = "&".join([f"{k}={v}" for k, v in params.items()])
+        # Usar urlencode para construir query string correctamente
+        query_string = urlencode(params)
         authorization_url = f"{self.GOOGLE_AUTH_URL}?{query_string}"
 
         return GoogleAuthURL(authorization_url=authorization_url, state=state)
@@ -173,7 +178,8 @@ class GoogleOAuthService:
         1. Intercambia code por access_token
         2. Obtiene info del usuario
         3. Crea/actualiza usuario en DB
-        4. Genera JWT propio
+        4. Guarda tokens OAuth en oauth_tokens
+        5. Genera JWT propio
 
         Args:
             code: Authorization code desde Google
@@ -184,6 +190,9 @@ class GoogleOAuthService:
         # 1. Intercambiar code por token
         token_data = await self.exchange_code_for_token(code)
         access_token = token_data["access_token"]
+        refresh_token = token_data.get("refresh_token")  # Puede no venir si ya existe
+        expires_in = token_data.get("expires_in", 3600)  # Default 1 hora
+        scope = token_data.get("scope", "")
 
         # 2. Obtener info del usuario
         google_user = await self.get_user_info(access_token)
@@ -191,7 +200,17 @@ class GoogleOAuthService:
         # 3. Crear/actualizar usuario en DB
         user = self.get_or_create_user(google_user)
 
-        # 4. Generar nuestro propio JWT
+        # 4. Guardar/actualizar tokens OAuth para YouTube
+        self._save_or_update_oauth_token(
+            user_id=user.id,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=expires_in,
+            scope=scope,
+            provider_user_id=google_user.id,
+        )
+
+        # 5. Generar nuestro propio JWT
         jwt_token = create_access_token(subject=str(user.id))
 
         return {
@@ -207,3 +226,61 @@ class GoogleOAuthService:
                 "is_verified": user.is_verified,
             },
         }
+
+    def _save_or_update_oauth_token(
+        self,
+        user_id: str,
+        access_token: str,
+        refresh_token: str | None,
+        expires_in: int,
+        scope: str,
+        provider_user_id: str,
+    ) -> None:
+        """
+        Guarda o actualiza el token OAuth de YouTube/Google en la base de datos.
+        
+        Args:
+            user_id: ID del usuario
+            access_token: Token de acceso de Google
+            refresh_token: Token de refresh (puede ser None si ya existe)
+            expires_in: Tiempo de expiración en segundos
+            scope: Permisos otorgados
+            provider_user_id: ID del usuario en Google
+        """
+        # Buscar token existente
+        existing_token = (
+            self.db.query(OAuthToken)
+            .filter(
+                OAuthToken.user_id == user_id,
+                OAuthToken.provider == "youtube"
+            )
+            .first()
+        )
+
+        expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+
+        if existing_token:
+            # Actualizar token existente
+            existing_token.access_token = access_token
+            if refresh_token:  # Solo actualizar si viene uno nuevo
+                existing_token.refresh_token = refresh_token
+            existing_token.expires_at = expires_at
+            existing_token.scope = scope
+            existing_token.provider_user_id = provider_user_id
+            existing_token.last_refreshed_at = datetime.utcnow()
+        else:
+            # Crear nuevo token
+            new_token = OAuthToken(
+                user_id=user_id,
+                provider="youtube",
+                access_token=access_token,
+                refresh_token=refresh_token,
+                token_type="Bearer",
+                scope=scope,
+                expires_at=expires_at,
+                provider_user_id=provider_user_id,
+            )
+            self.db.add(new_token)
+
+        self.db.commit()
+

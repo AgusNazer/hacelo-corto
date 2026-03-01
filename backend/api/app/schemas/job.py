@@ -1,30 +1,27 @@
 from uuid import UUID
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Any
 from pydantic import Field
 from app.schemas.base import BaseSchema
 from app.models.job import JobStatus, JobType
 
 
-class JobReframeResponse(BaseSchema):
-    job_id: UUID
-    job_type: JobType
-    status: JobStatus
-    filename: str
-    start_sec: int
-    end_sec: int
-    created_at: datetime
-
-
 class JobStatusResponse(BaseSchema):
     job_id: UUID
     status: JobStatus
-    output_path: str | None = None
+    output_path: dict[str, Any] | None = None
 
 
+# ============ REFRAME ============
 class JobReframeRequest(BaseSchema):
-    start_sec: int = Field(..., description="Inicio de recorte en Segundo")
-    end_sec: int = Field(..., description="Final del recorte en Segundos")
+    start_sec: int = Field(
+        ge=0,
+        description="Inicio de recorte en Segundo"
+    )
+    end_sec: int = Field(
+        gt=0,
+        description="Final del recorte en Segundos"
+    )
     job_type: JobType = Field(
         default=JobType.REFRAME,
     )
@@ -52,24 +49,35 @@ class JobReframeRequest(BaseSchema):
         default="auto",
         description="Perfil de contenido para ajustar framing (auto/entrevista/deportes/musica)",
     )
+    watermark: str | None = Field(
+        default="Hacelo Corto",
+        max_length=12,
+        description="Opcional: aplicar marca de agua (texto)",
+    )
 
 
-class AutoClipSegment(BaseSchema):
+class JobReframeResponse(BaseSchema):
+    job_id: UUID
+    job_type: JobType
+    status: JobStatus
+    filename: str
     start_sec: int
     end_sec: int
+    created_at: datetime
 
 
+# ============ AUTO REFRAME ============
 class JobAutoReframeRequest(BaseSchema):
     clips_count: int | None = Field(
         default=None,
         ge=1,
-        le=20,
+        le=3,
         description="Cantidad de clips a generar (opcional, backend decide si no se envia)",
     )
     clip_duration_sec: int | None = Field(
         default=None,
         ge=5,
-        le=120,
+        le=60,
         description="Duracion por clip (opcional, backend decide si no se envia)",
     )
     output_style: Literal["vertical", "speaker_split"] = Field(
@@ -79,6 +87,14 @@ class JobAutoReframeRequest(BaseSchema):
     content_profile: Literal["auto", "interview", "sports", "music"] = Field(
         default="auto",
         description="Perfil de contenido para ajustar framing (auto/entrevista/deportes/musica)",
+    )
+    watermark: str | None = Field(
+        default="Hacelo Corto",
+        max_length=12,
+        description="Opcional: aplicar marca de agua (texto)",
+    )
+    subtitles: bool | None = Field(
+        description="Opcional: crear archivo de Subtitulos"
     )
 
 
@@ -99,6 +115,7 @@ class JobAutoReframeResponse(BaseSchema):
     jobs: list[JobAutoReframeItem]
 
 
+# ============ AUTO REFRAME 2 ============
 class JobAutoReframeResponse2(BaseSchema):
     job_id: UUID
     job_type: JobType
@@ -106,13 +123,14 @@ class JobAutoReframeResponse2(BaseSchema):
     filename: str
     total_jobs: int
     created_at: datetime
-    
 
+
+# ============ USER CLIP ============
 class UserClipItem(BaseSchema):
     job_id: UUID
     video_id: UUID
     status: JobStatus
-    output_path: str | None = None
+    output_path: dict[str, Any] | None = None
     source_filename: str
     created_at: datetime
 
@@ -126,3 +144,46 @@ class UserClipsResponse(BaseSchema):
 
 class UserClipDetailResponse(BaseSchema):
     clip: UserClipItem
+
+class AutoClipSegment(BaseSchema):
+    start_sec: int
+    end_sec: int
+
+
+# ============ ADD AUDIO ============ 
+class JobAddAudioRequest(BaseSchema):
+    audio_id: UUID
+    audio_offset_sec: int = Field(
+        ge=0,
+        description="Segundos del video donde empieza el audio"
+    )
+
+    audio_start_sec: int = Field(
+        ge=0,
+        description="Inicio del segmento de audio a usar"
+    )
+
+    audio_end_sec: int = Field(
+        gt=0,
+        description="Fin del segmento de audio a usar"
+    )
+
+    audio_volume: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=2.0,
+        description="Multiplicador de volumen (1.0 = volumen original)"
+    )
+    #mix_original_audio:
+    #fade_in_sec:
+    #fade_out_sec:
+    #allow_loop:
+
+class JobAddAudioResponse(BaseSchema):
+    job_id: UUID
+    job_type: JobType
+    status: JobStatus
+    filename: str
+    audio_filename: str
+    audio_volume: int
+    created_at: datetime
