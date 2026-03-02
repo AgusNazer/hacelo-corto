@@ -2,32 +2,51 @@
 
 ## Seguimiento activo (rama actual)
 
-Rama de trabajo actual: `feature/frontend-share-social-linking`
+Rama de trabajo actual: `feat/frontend-auto2-audio-progress-clean`
 
 ### Objetivo
 
-Ajustar la vista de compartir clips para preparar vinculacion futura de redes sociales, mejorar responsive en tablet/desktop y dejar la experiencia lista para integrar endpoints de publicacion.
+Alinear el frontend con los cambios recientes de backend: dejar de usar el endpoint legacy `/auto`, exponer opciones nuevas de subtitulos/watermark, mostrar progreso real de creacion de clips y agregar soporte inicial de audios en Home + Library.
 
 ### Cambios implementados en curso
 
-- Se actualizaron acciones por red en `frontend/src/app/app/share/[clipId]/page.tsx` con estado de vinculacion local por plataforma (`Vincular cuenta` / `Vinculada`) para dejar listo el punto de integracion con OAuth/backend.
-- Se agrego accion `Publicar clip` condicionada a cuenta vinculada como placeholder funcional del flujo futuro centralizado de publicacion.
-- Se mejoro el layout responsive de compartir: el preview de video deja de crecer en exceso en tablet y la columna de redes queda mejor distribuida en desktop sin huecos visuales.
-- Se incorporo `YouTube` al listado de plataformas objetivo para futuros endpoints de publicacion.
-- Se corrigio el 404 de favicon agregando `frontend/src/app/icon.svg` y metadata de iconos en `frontend/src/app/layout.tsx`.
-- Se aplicaron animaciones coherentes con el resto del dashboard en la pantalla de compartir (`animate-fade-up`, `animate-drift`, stagger por tarjeta y hover refinado) para mejorar continuidad visual.
+- Se actualizo `frontend/src/services/videoApi.ts` para eliminar el fallback al endpoint removido `/api/v1/jobs/reframe/{video_id}/auto`; ahora Home usa solo `POST /auto2`.
+- Se ampliaron los payloads de jobs (auto y manual) para soportar `subtitles` y `watermark`, con UI de configuracion en Home y Timeline.
+- Se agrego seguimiento de avance real en Home (`ProjectStatusPanel`), mostrando porcentaje y conteo de jobs listos/en proceso/error durante la generacion de clips.
+- Se extendio la carga inicial para aceptar archivos de audio (`video/*,audio/*`) y se incorporaron endpoints de audios en `videoApi` (`upload`, `list`, `url`, `delete`).
+- Se agrego vista de `Audios` en `frontend/src/app/app/library/page.tsx` con busqueda, preview bajo demanda y eliminacion.
+- Se ajustaron mensajes de estado para diferenciar uploads de video/audio sin romper la experiencia de clips.
+- Hotfix: se restauro normalizacion de `output_path` (cuando backend responde JSON) en `frontend/src/services/videoApi.ts` para evitar previews rotos con `src="[object Object]"`.
+- Se agrego en `frontend/src/app/app/timeline/page.tsx` el flujo de mezcla de audio sobre video: seleccion de audio, preview, parametros (`offset`, `start/end`, `volume`) y envio de job a `POST /api/v1/jobs/add-audio/{video_id}`.
+- Se incorporo polling de estado para jobs de mezcla de audio en Timeline y preview del output final cuando el backend devuelve `output_path`.
+- Se reforzo la visualizacion de avance en `frontend/src/components/home/ProjectStatusPanel.tsx` con barra segmentada por estados (listo/error/pendiente) y colores diferenciados.
+- Se rediseño la card de audio en `frontend/src/app/app/library/page.tsx` para que tenga look catppuccin (gradientes violeta/rosa, onda visual y reproductor de preview mas integrado al estilo actual).
+- Se integro `POST /api/v1/videos/from-job/{job_id}` en `frontend/src/app/app/library/page.tsx` para importar clips como videos reeditables desde la biblioteca.
+- Se movio el flujo de mezcla a una nueva ruta dedicada `frontend/src/app/app/audio_editor/page.tsx` (selector de video + audio, parametros y visual de pistas), y Timeline ahora solo enlaza al nuevo editor.
+- Se agrego acceso directo desde biblioteca de clips a `Audio editor` con query params (`videoId`, `clipId`) para abrir el video correcto.
+- Fix UX: se acotaron pistas y campos del `Audio editor` a la duracion real del video/audio para evitar que el track se desborde visualmente o exceda el largo maximo permitido.
+- Ajuste de biblioteca: se removio `Importar a Videos` en cards de clips y se priorizo navegacion directa a `Timeline` + `Audio editor`.
+- Se integro flujo real de YouTube en `frontend/src/app/app/share/[clipId]/page.tsx`: estado de conexion, CTA de conexion OAuth Google y publicacion real por `POST /api/v1/youtube/publish/{job_id}`.
+- Se agregaron en `frontend/src/services/videoApi.ts` los contratos para `GET /api/v1/youtube/status` y `POST /api/v1/youtube/publish/{job_id}`.
+- Hotfix share: se cambio la carga del clip a `GET /api/v1/jobs/{job_id}` (en lugar de busqueda por listado) y se agrego mensaje/reintento explicito para errores de red (`Failed to fetch`).
+- Se agrego asset de demo para landing en `frontend/public/landing-demos/video2_entrevista.mp4` para habilitar preview real en Home (`/landing-demos/video2_entrevista.mp4`).
 
 ### Commits de esta rama (frontend)
 
-- `feat(frontend): polish share UI and stage social account linking`
-- `feat(frontend): add motion polish to clip share experience`
-- `docs(frontend): update worklog for share social linking branch`
+- `feat(frontend): sync auto2 flow, clip progress and audio library support`
+- `docs(frontend): log auto2 and audio frontend refresh`
+- `feat(frontend): add timeline audio-mix workflow and segmented clip progress`
+- `feat(frontend): add import-from-job action in clips library`
+- `feat(frontend): move audio workflow into dedicated audio editor route`
+- `feat(frontend): connect share screen to real youtube publish endpoints`
 
 ### Validaciones locales
 
 Ejecutado en `frontend/`:
 
 - `npm run lint` -> OK
+- `npm run build` -> OK
+- `npm run test -- --run` -> OK
 
 ## Objetivo de la rama
 

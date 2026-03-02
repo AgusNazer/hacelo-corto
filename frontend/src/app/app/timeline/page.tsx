@@ -7,6 +7,7 @@ import { videoApi, type UserClipItem, type UserVideoItem, VideoApiError } from "
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { useVideoSettingsStore } from "@/src/store/useVideoSettingsStore";
 import { Search } from "lucide-react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -24,7 +25,7 @@ function normalizeVideoError(error: unknown, fallbackMessage: string) {
 
   return fallbackMessage;
 }
-  
+
 export default function TimelinePage() {
   const searchParams = useSearchParams();
   const preferredVideoId = searchParams.get("videoId")?.trim() ?? "";
@@ -200,6 +201,7 @@ export default function TimelinePage() {
         end_sec: normalizedEnd,
         crop_to_vertical: settings.cropToVertical,
         subtitles: settings.subtitles,
+        watermark: settings.watermark,
         face_tracking: settings.faceTracking,
         color_filter: settings.colorFilter
       });
@@ -211,7 +213,8 @@ export default function TimelinePage() {
       setIsSubmitting(false);
     }
   };
-    const videoEditarBool = !Boolean(preferredVideoId && preferredVideoId.trim().length > 0);
+
+  const videoEditarBool = !Boolean(preferredVideoId && preferredVideoId.trim().length > 0);
 
   return (
     <section className="w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
@@ -348,6 +351,19 @@ export default function TimelinePage() {
           <p className="text-xs uppercase tracking-[0.22em] text-white/65">configuracion</p>
           <h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">Ajustes de recorte</h3>
           <VideoSettings submitInfoSettings={submitInfoSettings} submitErrorSettings={submitErrorSettings} videoEditarBool={videoEditarBool} draftFilename={draftFilename} setDraftFilename={setDraftFilename} saveRaname={saveRaname} trimStart={trimStart} trimEnd={trimEnd} minClipDurationSec={MIN_CLIP_SECONDS} isSubmitting={isSubmitting} submitInfo={submitInfo} selectedVideoId={selectedVideoId} submitError={submitError}  handleCreateJob={handleCreateJob} />
+
+          <div className="mt-4 rounded-xl border border-neon-violet/30 bg-neon-violet/5 p-3">
+            <p className="text-xs uppercase tracking-[0.18em] text-neon-violet/85">Audio Editor</p>
+            <p className="mt-2 text-xs text-white/75">
+              La mezcla de audio ahora vive en una pantalla dedicada para trabajar por pistas.
+            </p>
+            <Link
+              href={selectedVideoId ? `/app/audio_editor?videoId=${selectedVideoId}` : "/app/audio_editor"}
+              className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-neon-violet/45 bg-neon-violet/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-neon-violet transition hover:bg-neon-violet/20"
+            >
+              Abrir Audio Editor
+            </Link>
+          </div>
         </Panel>
       </div>
     </section>
