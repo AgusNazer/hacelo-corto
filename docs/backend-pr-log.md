@@ -18,6 +18,7 @@ Dejar trazabilidad backend para el refresh de frontend sobre `auto2`, subtitulos
 - Ajuste de frontend: se validan limites de duracion antes de llamar `add-audio` para no enviar segmentos que excedan el largo del video destino.
 - Se consumen desde frontend los endpoints ya disponibles de YouTube (`GET /api/v1/youtube/status`, `POST /api/v1/youtube/publish/{job_id}`) para pasar de modo demo a flujo real de publicacion.
 - Ajuste de consumo frontend: la vista Share ahora usa `GET /api/v1/jobs/{job_id}` para resolver clip puntual y evitar dependencia de filtros en listados.
+- En esta iteracion no hubo cambios de codigo backend; solo se incorporo un asset de demo en frontend para landing.
 
 ### Commits de esta rama (backend)
 
