@@ -549,6 +549,12 @@ export default function LibraryPage() {
 
               {editingVideoId !== video.video_id ? (
                 <div className="mt-2 grid grid-cols-2 gap-2">
+                  <Link
+                    href={`/app/timeline?videoId=${video.video_id}`}
+                    className="col-span-2 inline-flex items-center justify-center gap-1 rounded-lg border border-neon-cyan/40 bg-neon-cyan/10 px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-neon-cyan transition hover:bg-neon-cyan/20"
+                  >
+                    <PencilLine size={12} /> Abrir Timeline
+                  </Link>
                   <button
                     type="button"
                     className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/20 bg-white/5 px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/75 transition hover:border-neon-cyan/40 hover:text-neon-cyan"
