@@ -6,22 +6,22 @@ Rama de trabajo actual: `feat/frontend-auto2-audio-progress-clean`
 
 ### Objetivo
 
-Dejar trazabilidad backend para el refresh de frontend sobre `auto2`, subtitulos/watermark y soporte de audios, sin introducir cambios de codigo backend en esta rama.
+Dejar trazabilidad backend para el refresh de frontend sobre `auto2`, subtitulos/watermark y soporte de audios, incluyendo fix minimo en `delete clip` para contratos `output_path` JSON.
 
 ### Cambios implementados en curso
 
-- No se aplicaron cambios de codigo en `backend/` durante esta rama; el alcance fue frontend.
 - Se valido que el frontend ya no consuma el endpoint eliminado `POST /api/v1/jobs/reframe/{video_id}/auto` y quede alineado con `POST /api/v1/jobs/reframe/{video_id}/auto2`.
-- Se documenta dependencia a confirmar con backend: exponer/estabilizar preview de audios (URL presignada por item) para reducir llamadas cliente-a-cliente cuando crezca la biblioteca.
-- Se documenta dependencia funcional: endpoint `POST /api/v1/jobs/add-audio/{video_id}` aun no esta cableado en el flujo UI (queda para siguiente iteracion front+back).
+- Se cableo en frontend el endpoint `POST /api/v1/jobs/add-audio/{video_id}` para iniciar jobs de mezcla de audio desde Timeline.
+- Se cableo en frontend el endpoint `POST /api/v1/videos/from-job/{job_id}` para importar resultados de jobs como videos editables.
+- Se aplico fix local en `backend/api/app/services/job_service.py` para eliminar clips cuando `output_path` llega como JSON (`video` + `subtitles`) y evitar fallos al borrar assets.
 
 ### Commits de esta rama (backend)
 
-- Sin commits backend en esta rama.
+- `fix(backend): support deleting clips with json output_path`
 
 ### Validaciones locales
 
-No aplica (sin cambios backend).
+- Verificacion manual del flujo `DELETE /api/v1/jobs/{job_id}` con `output_path` JSON (sin excepciones de tipo y borrado correcto de assets asociados).
 
 ## Objetivo
 

@@ -16,11 +16,19 @@ Alinear el frontend con los cambios recientes de backend: dejar de usar el endpo
 - Se extendio la carga inicial para aceptar archivos de audio (`video/*,audio/*`) y se incorporaron endpoints de audios en `videoApi` (`upload`, `list`, `url`, `delete`).
 - Se agrego vista de `Audios` en `frontend/src/app/app/library/page.tsx` con busqueda, preview bajo demanda y eliminacion.
 - Se ajustaron mensajes de estado para diferenciar uploads de video/audio sin romper la experiencia de clips.
+- Hotfix: se restauro normalizacion de `output_path` (cuando backend responde JSON) en `frontend/src/services/videoApi.ts` para evitar previews rotos con `src="[object Object]"`.
+- Se agrego en `frontend/src/app/app/timeline/page.tsx` el flujo de mezcla de audio sobre video: seleccion de audio, preview, parametros (`offset`, `start/end`, `volume`) y envio de job a `POST /api/v1/jobs/add-audio/{video_id}`.
+- Se incorporo polling de estado para jobs de mezcla de audio en Timeline y preview del output final cuando el backend devuelve `output_path`.
+- Se reforzo la visualizacion de avance en `frontend/src/components/home/ProjectStatusPanel.tsx` con barra segmentada por estados (listo/error/pendiente) y colores diferenciados.
+- Se rediseño la card de audio en `frontend/src/app/app/library/page.tsx` para que tenga look catppuccin (gradientes violeta/rosa, onda visual y reproductor de preview mas integrado al estilo actual).
+- Se integro `POST /api/v1/videos/from-job/{job_id}` en `frontend/src/app/app/library/page.tsx` para importar clips como videos reeditables desde la biblioteca.
 
 ### Commits de esta rama (frontend)
 
 - `feat(frontend): sync auto2 flow, clip progress and audio library support`
 - `docs(frontend): log auto2 and audio frontend refresh`
+- `feat(frontend): add timeline audio-mix workflow and segmented clip progress`
+- `feat(frontend): add import-from-job action in clips library`
 
 ### Validaciones locales
 
