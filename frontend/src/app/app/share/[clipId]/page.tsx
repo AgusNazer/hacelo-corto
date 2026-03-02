@@ -30,6 +30,10 @@ function normalizeVideoError(error: unknown, fallbackMessage: string) {
     return error.message;
   }
   if (error instanceof Error) {
+    const normalized = error.message.toLowerCase();
+    if (normalized.includes("failed to fetch") || normalized.includes("networkerror")) {
+      return "No pudimos conectar con la API. Verifica que backend este levantado e intenta nuevamente.";
+    }
     return error.message;
   }
   return fallbackMessage;
@@ -65,13 +69,8 @@ export default function ShareClipPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await videoApi.getMyClips(token, {
-          limit: 10,
-          offset: 0,
-          query: clipId
-        });
-
-        const selectedClip = response.clips.find((item) => item.job_id === clipId) ?? null;
+        const response = await videoApi.getMyClipById(clipId, token);
+        const selectedClip = response.clip ?? null;
 
         if (!cancelled) {
           if (!selectedClip) {
@@ -179,8 +178,17 @@ export default function ShareClipPage() {
 
         {isLoading ? <p className="mt-4 text-sm text-white/70">Cargando clip...</p> : null}
 
-        {error ? (
-          <p className="mt-4 rounded-xl border border-rose-400/35 bg-rose-400/10 px-3 py-2 text-sm text-rose-200">{error}</p>
+      {error ? (
+          <div className="mt-4 rounded-xl border border-rose-400/35 bg-rose-400/10 px-3 py-2 text-sm text-rose-200">
+            <p>{error}</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-2 rounded-lg border border-rose-300/35 bg-rose-300/10 px-2.5 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-rose-100 transition hover:bg-rose-300/20"
+            >
+              Reintentar
+            </button>
+          </div>
         ) : null}
 
         {!isLoading && !error && clip ? (
