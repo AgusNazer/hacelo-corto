@@ -500,6 +500,12 @@ export default function LibraryPage() {
               >
                 <Download size={12} /> {importingClipId === clip.job_id ? "Importando..." : "Importar a Videos"}
               </button>
+              <Link
+                href={`/app/audio_editor?videoId=${clip.video_id}&clipId=${clip.job_id}`}
+                className="col-span-2 inline-flex items-center justify-center gap-1 rounded-lg border border-neon-mint/40 bg-neon-mint/10 px-2 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-neon-mint transition hover:bg-neon-mint/20"
+              >
+                <AudioLines size={12} /> Abrir en Audio Editor
+              </Link>
             </div>
           </article>
           );

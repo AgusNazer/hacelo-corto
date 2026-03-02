@@ -1,10 +1,11 @@
-import { Film, Home, Upload, Waypoints, X } from "lucide-react";
+import { AudioLines, Film, Home, Upload, Waypoints, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const items = [
   { icon: Home, label: "Panel", href: "/app" },
   { icon: Waypoints, label: "Timeline editor", href: "/app/timeline" },
+  { icon: AudioLines, label: "Audio editor", href: "/app/audio_editor" },
   { icon: Film, label: "Biblioteca clips", href: "/app/library" },
   { icon: Upload, label: "Exportacion", href: "/app/export" }
 ];
