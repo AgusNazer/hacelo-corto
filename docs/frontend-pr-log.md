@@ -28,6 +28,7 @@ Alinear el frontend con los cambios recientes de backend: dejar de usar el endpo
 - Ajuste de biblioteca: se removio `Importar a Videos` en cards de clips y se priorizo navegacion directa a `Timeline` + `Audio editor`.
 - Se integro flujo real de YouTube en `frontend/src/app/app/share/[clipId]/page.tsx`: estado de conexion, CTA de conexion OAuth Google y publicacion real por `POST /api/v1/youtube/publish/{job_id}`.
 - Se agregaron en `frontend/src/services/videoApi.ts` los contratos para `GET /api/v1/youtube/status` y `POST /api/v1/youtube/publish/{job_id}`.
+- Hotfix share: se cambio la carga del clip a `GET /api/v1/jobs/{job_id}` (en lugar de busqueda por listado) y se agrego mensaje/reintento explicito para errores de red (`Failed to fetch`).
 
 ### Commits de esta rama (frontend)
 
