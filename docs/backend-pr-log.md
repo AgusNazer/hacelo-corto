@@ -1,5 +1,28 @@
 # Backend PR Worklog
 
+## Seguimiento activo (rama actual)
+
+Rama de trabajo actual: `feat/frontend-auto2-audio-progress`
+
+### Objetivo
+
+Dejar trazabilidad backend para el refresh de frontend sobre `auto2`, subtitulos/watermark y soporte de audios, sin introducir cambios de codigo backend en esta rama.
+
+### Cambios implementados en curso
+
+- No se aplicaron cambios de codigo en `backend/` durante esta rama; el alcance fue frontend.
+- Se valido que el frontend ya no consuma el endpoint eliminado `POST /api/v1/jobs/reframe/{video_id}/auto` y quede alineado con `POST /api/v1/jobs/reframe/{video_id}/auto2`.
+- Se documenta dependencia a confirmar con backend: exponer/estabilizar preview de audios (URL presignada por item) para reducir llamadas cliente-a-cliente cuando crezca la biblioteca.
+- Se documenta dependencia funcional: endpoint `POST /api/v1/jobs/add-audio/{video_id}` aun no esta cableado en el flujo UI (queda para siguiente iteracion front+back).
+
+### Commits de esta rama (backend)
+
+- Sin commits backend en esta rama.
+
+### Validaciones locales
+
+No aplica (sin cambios backend).
+
 ## Objetivo
 
 Dejar documentado, paso a paso, que cambios necesita backend para que el login con Google funcione estable en local y no rompa el flujo de `/auth/callback` en frontend.
