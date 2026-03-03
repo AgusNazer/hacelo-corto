@@ -24,6 +24,8 @@ Rama de trabajo: `feat/frontend-timeline-library-streamline`.
 - Se simplifico `frontend/src/app/app/audio_editor/page.tsx` removiendo listado/buscador/paginacion de videos para replicar el enfoque de Timeline: editor sobre un unico `videoId`/`clipId` proveniente de Biblioteca.
 - Se agrego CTA a Biblioteca en Audio Editor cuando no hay video seleccionado, evitando estado vacio confuso.
 - Se incorporo en Biblioteca (videos originales) el boton `Abrir en Audio Editor` en `frontend/src/app/app/library/page.tsx`, alineando la navegacion con clips.
+- Fix de compatibilidad temporal con backend en `frontend/src/app/app/audio_editor/page.tsx`: `audio_volume` ahora se envia como entero (`1` o `2`) para evitar `500` por validacion de `JobAddAudioResponse`.
+- Se agrego fallback visual en previews de clips en `frontend/src/app/app/library/page.tsx` para mostrar aviso cuando el `<video>` falla al reproducir (sin dejar card vacia/negra).
 
 ## Commits realizados
 
@@ -31,6 +33,7 @@ Rama de trabajo: `feat/frontend-timeline-library-streamline`.
 - `fix(frontend): persist timeline editor session across reloads`
 - `chore(frontend): add landing demo video1 asset`
 - `feat(frontend): streamline audio editor entry from library`
+- `fix(frontend): send integer audio volume and add clip preview fallback`
 - `docs(frontend): log timeline-library streamlining and settings cleanup`
 
 ## Archivos clave
