@@ -14,14 +14,8 @@ class JobStatusResponse(BaseSchema):
 
 # ============ REFRAME ============
 class JobReframeRequest(BaseSchema):
-    start_sec: int = Field(
-        ge=0,
-        description="Inicio de recorte en Segundo"
-    )
-    end_sec: int = Field(
-        gt=0,
-        description="Final del recorte en Segundos"
-    )
+    start_sec: int = Field(ge=0, description="Inicio de recorte en Segundo")
+    end_sec: int = Field(gt=0, description="Final del recorte en Segundos")
     job_type: JobType = Field(
         default=JobType.REFRAME,
     )
@@ -93,9 +87,7 @@ class JobAutoReframeRequest(BaseSchema):
         max_length=12,
         description="Opcional: aplicar marca de agua (texto)",
     )
-    subtitles: bool | None = Field(
-        description="Opcional: crear archivo de Subtitulos"
-    )
+    subtitles: bool | None = Field(description="Opcional: crear archivo de Subtitulos")
 
 
 class JobAutoReframeItem(BaseSchema):
@@ -129,6 +121,7 @@ class JobAutoReframeResponse2(BaseSchema):
 class UserClipItem(BaseSchema):
     job_id: UUID
     video_id: UUID
+    job_type: JobType
     status: JobStatus
     output_path: dict[str, Any] | None = None
     source_filename: str
@@ -145,39 +138,36 @@ class UserClipsResponse(BaseSchema):
 class UserClipDetailResponse(BaseSchema):
     clip: UserClipItem
 
+
 class AutoClipSegment(BaseSchema):
     start_sec: int
     end_sec: int
 
 
-# ============ ADD AUDIO ============ 
+# ============ ADD AUDIO ============
 class JobAddAudioRequest(BaseSchema):
     audio_id: UUID
     audio_offset_sec: int = Field(
-        ge=0,
-        description="Segundos del video donde empieza el audio"
+        ge=0, description="Segundos del video donde empieza el audio"
     )
 
     audio_start_sec: int = Field(
-        ge=0,
-        description="Inicio del segmento de audio a usar"
+        ge=0, description="Inicio del segmento de audio a usar"
     )
 
-    audio_end_sec: int = Field(
-        gt=0,
-        description="Fin del segmento de audio a usar"
-    )
+    audio_end_sec: int = Field(gt=0, description="Fin del segmento de audio a usar")
 
     audio_volume: float = Field(
         default=1.0,
         ge=0.1,
         le=2.0,
-        description="Multiplicador de volumen (1.0 = volumen original)"
+        description="Multiplicador de volumen (1.0 = volumen original)",
     )
-    #mix_original_audio:
-    #fade_in_sec:
-    #fade_out_sec:
-    #allow_loop:
+    # mix_original_audio:
+    # fade_in_sec:
+    # fade_out_sec:
+    # allow_loop:
+
 
 class JobAddAudioResponse(BaseSchema):
     job_id: UUID

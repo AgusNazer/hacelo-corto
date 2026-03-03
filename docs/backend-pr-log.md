@@ -2,6 +2,28 @@
 
 ## Seguimiento activo (rama actual)
 
+Rama de trabajo actual: `feature/mi-tarea`
+
+### Objetivo
+
+Hacer que los resultados de mezcla de audio (`ADD_AUDIO`) aparezcan en Biblioteca como clips del usuario, igual que los `REFRAME`.
+
+### Cambios implementados en curso
+
+- Se actualizo `backend/api/app/services/job_service.py` para que `GET /api/v1/jobs/my-clips` incluya jobs `REFRAME` y `ADD_AUDIO` cuando tienen `output_path`.
+- Se ajusto `GET /api/v1/jobs/{job_id}` y `DELETE /api/v1/jobs/{job_id}` para aceptar ambos tipos (`REFRAME` y `ADD_AUDIO`) manteniendo ownership checks.
+- Se agrego `job_type` en `UserClipItem` (`backend/api/app/schemas/job.py`) para que frontend pueda diferenciar visualmente el origen del clip.
+
+### Commits de esta rama (backend)
+
+- `feat(backend): include add-audio jobs in user clips endpoints`
+
+### Validaciones locales
+
+- `docker exec fastapi python -m compileall app` -> OK
+
+## Seguimiento activo (rama actual)
+
 Rama de trabajo actual: `feat/backend-youtube-ai-metadata`
 
 ### Objetivo
