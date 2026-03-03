@@ -27,6 +27,7 @@ Rama de trabajo: `feat/frontend-timeline-library-streamline`.
 - Fix de compatibilidad temporal con backend en `frontend/src/app/app/audio_editor/page.tsx`: `audio_volume` ahora se envia como entero (`1` o `2`) para evitar `500` por validacion de `JobAddAudioResponse`.
 - Se agrego fallback visual en previews de clips en `frontend/src/app/app/library/page.tsx` para mostrar aviso cuando el `<video>` falla al reproducir (sin dejar card vacia/negra).
 - Se reemplazo el reproductor nativo de audio por un componente custom catppuccin (`frontend/src/components/audio/AudioPlayer.tsx` + `AudioPlayer.module.css`) reutilizado en `Audio editor` y `Biblioteca`.
+- Ajuste UX del player custom: se removio el bloque visual superior y se reorganizo el layout en dos filas limpias (arriba progreso/tiempos, abajo volumen), con foco en simplicidad visual.
 
 ## Commits realizados
 
@@ -36,6 +37,7 @@ Rama de trabajo: `feat/frontend-timeline-library-streamline`.
 - `feat(frontend): streamline audio editor entry from library`
 - `fix(frontend): send integer audio volume and add clip preview fallback`
 - `feat(frontend): redesign custom audio player with catppuccin UI`
+- `refactor(frontend): simplify audio player layout for cleaner controls`
 - `docs(frontend): log timeline-library streamlining and settings cleanup`
 
 ## Archivos clave
