@@ -20,11 +20,17 @@ Rama de trabajo: `feat/frontend-timeline-library-streamline`.
 - Se removieron de ajustes de timeline valores sin uso real (`crop`, `face tracking`, `color filter`, `videoStart`, `videoEnd`) y se alinio el store en `frontend/src/store/useVideoSettingsStore.ts` a parametros vigentes del backend.
 - Se actualizo `frontend/src/components/home/VideoSettingsModal.tsx` para mantener consistencia de tipos/ajustes y evitar deuda tecnica por campos obsoletos.
 - Se persistio la sesion de Timeline en `localStorage` (`timeline:editor-session`) para conservar video activo + job en curso/resultado al recargar o navegar, evitando que se pierda el contexto de trabajo.
+- Se agrego el asset `frontend/public/landing-demos/video1_musica.mp4` para la seccion de demos de landing.
+- Se simplifico `frontend/src/app/app/audio_editor/page.tsx` removiendo listado/buscador/paginacion de videos para replicar el enfoque de Timeline: editor sobre un unico `videoId`/`clipId` proveniente de Biblioteca.
+- Se agrego CTA a Biblioteca en Audio Editor cuando no hay video seleccionado, evitando estado vacio confuso.
+- Se incorporo en Biblioteca (videos originales) el boton `Abrir en Audio Editor` en `frontend/src/app/app/library/page.tsx`, alineando la navegacion con clips.
 
 ## Commits realizados
 
 - `feat(frontend): streamline timeline flow and add job progress preview`
 - `fix(frontend): persist timeline editor session across reloads`
+- `chore(frontend): add landing demo video1 asset`
+- `feat(frontend): streamline audio editor entry from library`
 - `docs(frontend): log timeline-library streamlining and settings cleanup`
 
 ## Archivos clave
