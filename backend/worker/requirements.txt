@@ -1,5 +1,34 @@
-redis
-opencv-python
-numpy
-ffmpeg-python
-boto3
+# Video/Audio processing
+opencv-python-headless==4.9.0.80
+numpy==1.26.4
+ffmpeg-python==0.2.0
+boto3==1.34.34
+librosa==0.10.2.post1
+soundfile==0.12.1
+
+# Queue
+redis==5.0.1
+
+# Logging
+python-json-logger==2.0.7
+
+# Database
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+
+# Validation
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Util
+python-dateutil==2.8.2
+
+# Audio y procesamiento
+numpy>=1.25.0
+
+# Manejadas desde DockerFile
+## Transcripción Whisper local
+#openai-whisper==20250625
+## PyTorch para CPU (compatible con la versión de Whisper)
+#torch==2.1.0
+#torchaudio==2.1.0

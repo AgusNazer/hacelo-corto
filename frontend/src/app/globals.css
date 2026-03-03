@@ -1,15 +1,86 @@
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --color-brand-100: #d6f5f5;
-  --color-brand-500: #118a8a;
-  --color-brand-700: #0a5252;
+  --font-sans: "Space Grotesk", "Segoe UI", sans-serif;
+  --font-display: "Sora", "Segoe UI", sans-serif;
+
+  --color-night-950: #11111b;
+  --color-night-900: #181825;
+  --color-night-800: #1e1e2e;
+  --color-night-700: #313244;
+
+  --color-neon-cyan: #89dceb;
+  --color-neon-magenta: #f5c2e7;
+  --color-neon-violet: #cba6f7;
+  --color-neon-mint: #a6e3a1;
+
+  --shadow-glow: 0 10px 35px rgba(137, 220, 235, 0.26);
+  --shadow-panel: 0 20px 60px rgba(17, 17, 27, 0.62);
+
+  --animate-fade-up: fade-up 0.55s ease-out both;
+  --animate-drift: drift 5s ease-in-out infinite;
+}
+
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 :root {
-  font-family: "Poppins", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  color: #cdd6f4;
+  background: #11111b;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #45475a #1e1e2e;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #45475a;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #1e1e2e;
 }
 
 body {
   margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(203, 166, 247, 0.24), transparent 40%),
+    radial-gradient(circle at 84% 14%, rgba(245, 194, 231, 0.18), transparent 45%),
+    radial-gradient(circle at 50% 90%, rgba(137, 220, 235, 0.2), transparent 48%),
+    #11111b;
+  color: #cdd6f4;
 }
