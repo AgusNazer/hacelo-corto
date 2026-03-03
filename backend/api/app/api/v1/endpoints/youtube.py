@@ -15,6 +15,7 @@ from app.core.dependencies import get_current_active_user
 from app.models.user import User
 from app.schemas.youtube import (
     YouTubeConnectionStatus,
+    YouTubeMetadataSuggestionResponse,
     YouTubePublishRequest,
     YouTubePublishResponse,
 )
@@ -75,3 +76,21 @@ async def check_youtube_connection(
 ) -> YouTubeConnectionStatus:
     """Verifica si el usuario tiene cuenta de YouTube conectada."""
     return service.get_connection_status(current_user.id)
+
+
+@router.get(
+    "/metadata/{job_id}",
+    response_model=YouTubeMetadataSuggestionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Sugerir metadata para YouTube",
+    description="Genera titulo, descripcion y hashtags sugeridos para un clip.",
+)
+async def suggest_metadata(
+    job_id: Annotated[UUID, Path(description="ID del Job procesado")],
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    service: Annotated[YouTubeUploadService, Depends(get_youtube_service)],
+) -> YouTubeMetadataSuggestionResponse:
+    """Sugiere metadata para publicar un clip en YouTube."""
+    return await service.suggest_metadata_for_job(
+        job_id=job_id, user_id=current_user.id
+    )
