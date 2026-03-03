@@ -26,6 +26,7 @@ Rama de trabajo: `feat/frontend-timeline-library-streamline`.
 - Se incorporo en Biblioteca (videos originales) el boton `Abrir en Audio Editor` en `frontend/src/app/app/library/page.tsx`, alineando la navegacion con clips.
 - Fix de compatibilidad temporal con backend en `frontend/src/app/app/audio_editor/page.tsx`: `audio_volume` ahora se envia como entero (`1` o `2`) para evitar `500` por validacion de `JobAddAudioResponse`.
 - Se agrego fallback visual en previews de clips en `frontend/src/app/app/library/page.tsx` para mostrar aviso cuando el `<video>` falla al reproducir (sin dejar card vacia/negra).
+- Se reemplazo el reproductor nativo de audio por un componente custom catppuccin (`frontend/src/components/audio/AudioPlayer.tsx` + `AudioPlayer.module.css`) reutilizado en `Audio editor` y `Biblioteca`.
 
 ## Commits realizados
 
@@ -34,6 +35,7 @@ Rama de trabajo: `feat/frontend-timeline-library-streamline`.
 - `chore(frontend): add landing demo video1 asset`
 - `feat(frontend): streamline audio editor entry from library`
 - `fix(frontend): send integer audio volume and add clip preview fallback`
+- `feat(frontend): redesign custom audio player with catppuccin UI`
 - `docs(frontend): log timeline-library streamlining and settings cleanup`
 
 ## Archivos clave
