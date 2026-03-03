@@ -86,11 +86,6 @@ export function AudioPlayer({ src, className, onDurationChange }: AudioPlayerPro
     return Math.min((currentTime / duration) * 100, 100);
   }, [currentTime, duration]);
 
-  const waveformBars = useMemo(
-    () => Array.from({ length: 30 }, (_, index) => 20 + ((index * 11 + 7) % 70)),
-    []
-  );
-
   const progressStyle = {
     "--progress": `${progressPct}%`
   } as CSSProperties;
@@ -144,31 +139,9 @@ export function AudioPlayer({ src, className, onDurationChange }: AudioPlayerPro
           {isPlaying ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
         </button>
 
-        <div className="min-w-0">
-          <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-night-950/80 px-2 py-1.5">
-            <div className="flex h-6 items-end gap-1">
-              {waveformBars.map((height, index) => {
-                const active = progressPct >= ((index + 1) / waveformBars.length) * 100;
-                return (
-                  <span
-                    key={`bar-${height}-${index}`}
-                    className={[
-                      "w-full rounded-full transition-colors duration-200",
-                      active ? "bg-gradient-to-t from-neon-violet/70 to-neon-magenta/90" : "bg-white/15"
-                    ].join(" ")}
-                    style={{ height: `${height}%` }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mb-1.5 flex items-center justify-between text-[11px] text-white/70">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-
+        <div className="min-w-0 space-y-2">
           <div className="flex items-center gap-2">
+            <span className="w-8 text-[11px] text-white/70">{formatTime(currentTime)}</span>
             <input
               type="range"
               min={0}
@@ -180,7 +153,10 @@ export function AudioPlayer({ src, className, onDurationChange }: AudioPlayerPro
               style={progressStyle}
               aria-label="Progreso de audio"
             />
+            <span className="w-8 text-right text-[11px] text-white/70">{formatTime(duration)}</span>
+          </div>
 
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setIsMuted((prev) => !prev)}
@@ -197,7 +173,7 @@ export function AudioPlayer({ src, className, onDurationChange }: AudioPlayerPro
               step={0.01}
               value={volume}
               onChange={(event) => setVolume(Number(event.target.value))}
-              className={[styles.slider, styles.volume].join(" ")}
+              className={[styles.slider, styles.volumeFull].join(" ")}
               style={volumeStyle}
               aria-label="Volumen"
             />
