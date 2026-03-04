@@ -60,8 +60,8 @@
   },
   "dashboard": {
     "panel": "Panel",
-    "timeline": "Timeline editor",
-    "audioEditor": "Audio editor",
+    "timeline": "Editor de tiempo",
+    "audioEditor": "Editor de audio",
     "library": "Biblioteca clips",
     "export": "Exportacion",
     "closeMenu": "Cerrar menu",
