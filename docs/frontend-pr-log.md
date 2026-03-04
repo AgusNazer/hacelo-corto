@@ -49,6 +49,15 @@ Incorporar infraestructura de internacionalizacion en Next.js (es/en) y aplicar 
 - `npm run test` -> OK
 - `npm run build` -> OK
 
+### Smoke checklist manual (i18n + metadata YouTube)
+
+- [ ] En `/app/share/[clipId]` con locale `es`, ejecutar `Generar datos con IA` y confirmar titulo/descripcion en espanol.
+- [ ] Recargar la pagina y validar que titulo/descripcion/hashtags/tags se restauran desde draft local.
+- [ ] Cambiar locale a `en`, volver a ejecutar sugerencia IA y validar salida en ingles.
+- [ ] Recargar nuevamente en `en` y confirmar persistencia por `clip + locale`.
+- [ ] Hacer `logout` y verificar que se limpian drafts de Home/Timeline/Audio editor/Share metadata.
+- [ ] Iniciar sesion otra vez y confirmar que Share abre con valores por defecto (sin draft previo).
+
 ## Seguimiento activo (rama actual)
 
 Rama de trabajo actual: `feat/frontend-light-latte-seo-hardening`
