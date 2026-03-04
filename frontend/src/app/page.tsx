@@ -240,7 +240,7 @@ export default function HomePage() {
             Dos espacios clave para cerrar el workflow: timeline para recorte fino y audio editor para mezcla final del clip.
           </p>
 
-          <div className="mt-7 grid gap-5 lg:grid-cols-2">
+          <div className="mt-7 grid gap-4 md:grid-cols-2">
             {studioDemos.map((demo) => (
               <article key={demo.titulo} className="rounded-2xl border border-white/12 bg-night-800/70 p-4">
                 <div className="overflow-hidden rounded-xl border border-neon-violet/25 bg-black/45">
