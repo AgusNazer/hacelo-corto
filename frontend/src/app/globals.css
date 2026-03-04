@@ -63,6 +63,14 @@
   --hc-shadow-glow: 0 10px 35px rgba(137, 220, 235, 0.26);
   --hc-shadow-panel: 0 20px 60px rgba(17, 17, 27, 0.62);
 
+  --hc-logo-a-start: #89b4fa;
+  --hc-logo-a-mid: #89dceb;
+  --hc-logo-a-end: #cba6f7;
+  --hc-logo-b-start: #f5c2e7;
+  --hc-logo-b-mid: #89dceb;
+  --hc-logo-b-end: #a6e3a1;
+  --hc-logo-node: #1e1e2e;
+
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
   color: var(--hc-text-strong);
   background: var(--hc-night-950);
@@ -88,6 +96,14 @@ html.light {
   --hc-panel-veil: rgba(220, 224, 232, 0.72);
   --hc-shadow-glow: 0 10px 35px rgba(4, 165, 229, 0.24);
   --hc-shadow-panel: 0 22px 55px rgba(140, 143, 161, 0.3);
+
+  --hc-logo-a-start: #1e66f5;
+  --hc-logo-a-mid: #04a5e5;
+  --hc-logo-a-end: #8839ef;
+  --hc-logo-b-start: #d20f39;
+  --hc-logo-b-mid: #04a5e5;
+  --hc-logo-b-end: #40a02b;
+  --hc-logo-node: #eff1f5;
 }
 
 * {
