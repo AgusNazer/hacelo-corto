@@ -196,8 +196,16 @@ html.light .border-rose-400\/35 {
   border-color: rgb(244 63 94 / 0.45);
 }
 
+html.light .border-rose-300\/45 {
+  border-color: rgb(244 114 182 / 0.45);
+}
+
 html.light .bg-rose-400\/10 {
   background-color: rgb(251 113 133 / 0.16);
+}
+
+html.light .bg-rose-300\/10 {
+  background-color: rgb(249 168 212 / 0.2);
 }
 
 html.light .logout-btn {
@@ -212,5 +220,10 @@ html.light .logout-btn:hover {
 
 html.light input::placeholder,
 html.light textarea::placeholder {
+  color: rgb(92 95 119 / 0.55);
+}
+
+html.light input[class*="placeholder:text-white/35"]::placeholder,
+html.light textarea[class*="placeholder:text-white/35"]::placeholder {
   color: rgb(92 95 119 / 0.55);
 }
