@@ -170,3 +170,31 @@ html.light .bg-night-800\/45 {
 html.light .shadow-panel {
   box-shadow: var(--hc-shadow-panel);
 }
+
+html.light .text-rose-200,
+html.light .text-rose-300 {
+  color: rgb(159 18 57 / 0.95);
+}
+
+html.light .border-rose-400\/35 {
+  border-color: rgb(244 63 94 / 0.45);
+}
+
+html.light .bg-rose-400\/10 {
+  background-color: rgb(251 113 133 / 0.16);
+}
+
+html.light .logout-btn {
+  color: rgb(159 18 57 / 0.95);
+  border-color: rgb(244 63 94 / 0.45);
+  background-color: rgb(251 113 133 / 0.16);
+}
+
+html.light .logout-btn:hover {
+  background-color: rgb(251 113 133 / 0.24);
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: rgb(92 95 119 / 0.55);
+}
