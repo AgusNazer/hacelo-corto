@@ -17,11 +17,14 @@ Incorporar infraestructura de internacionalizacion en Next.js (es/en) y aplicar 
 - Se internacionalizo `frontend/src/app/page.tsx` (landing) incluyendo metadata SEO/OpenGraph/Twitter por idioma y traduccion completa de secciones visibles.
 - Se internacionalizaron pantallas de autenticacion en `frontend/src/app/auth/login/page.tsx`, `frontend/src/app/auth/register/page.tsx` y `frontend/src/app/auth/callback/GoogleCallbackClient.tsx`.
 - Se internacionalizo el shell principal del dashboard en `frontend/src/components/layout/NavBar.tsx` y `frontend/src/components/layout/Sidebar.tsx`.
+- Se internacionalizaron vistas del modulo app en `frontend/src/app/app/export/page.tsx` y `frontend/src/app/app/shortDetails/page.tsx`, incluyendo etiquetas, estados y acciones.
 
 ### Commits de esta rama (frontend)
 
 - `feat(frontend): add next-intl foundation and translate landing/auth shell`
+- `feat(frontend): translate export and short details app views`
 - `docs(frontend): log i18n rollout for landing auth and shell`
+- `docs(frontend): update i18n worklog with app view translation batch`
 
 ### Validaciones locales
 
