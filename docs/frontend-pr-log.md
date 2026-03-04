@@ -24,6 +24,9 @@ Incorporar infraestructura de internacionalizacion en Next.js (es/en) y aplicar 
 - Se internacionalizaron `frontend/src/app/app/timeline/page.tsx` y `frontend/src/app/app/audio_editor/page.tsx` en sus textos de UI, mensajes de estado y errores mas frecuentes.
 - Se internacionalizo `frontend/src/app/app/share/[clipId]/page.tsx` (estado de conexion/publicacion YouTube, asistente IA, metadata, errores y feedback de publicacion en es/en).
 - Se internacionalizaron componentes reutilizados de Home (`frontend/src/components/home/ProjectStatusPanel.tsx`, `frontend/src/components/home/GeneratedClipsSection.tsx`, `frontend/src/components/home/UploadDropzone.tsx`, `frontend/src/components/home/VideoSettings.tsx`) para evitar mezcla de idioma en el dashboard.
+- Se ajusto generacion de metadata YouTube para enviar locale actual (`lang`) al backend desde `frontend/src/services/videoApi.ts`, permitiendo que el proveedor IA reciba contexto de idioma (`es`/`en`).
+- Se agrego persistencia de metadata YouTube por clip+locale en `frontend/src/app/app/share/[clipId]/page.tsx` para que titulo/descripcion/hashtags/tags no se pierdan al recargar.
+- Se agrego limpieza de borradores de sesion al logout en `frontend/src/store/useAuthStore.ts` (Home, Timeline, Audio editor, Share metadata y estado OAuth temporal).
 
 ### Commits de esta rama (frontend)
 
@@ -32,11 +35,13 @@ Incorporar infraestructura de internacionalizacion en Next.js (es/en) y aplicar 
 - `fix(frontend): localize sidebar editor labels in spanish`
 - `feat(frontend): translate app home library timeline and audio editor`
 - `feat(frontend): translate share page and home reusable components`
+- `fix(frontend): persist share metadata drafts and clear session artifacts on logout`
 - `docs(frontend): log i18n rollout for landing auth and shell`
 - `docs(frontend): update i18n worklog with app view translation batch`
 - `docs(frontend): log sidebar label localization adjustment`
 - `docs(frontend): log i18n translation pass for main app screens`
 - `docs(frontend): log i18n sweep for share route and home components`
+- `docs(frontend): log share metadata persistence and logout cleanup`
 
 ### Validaciones locales
 
