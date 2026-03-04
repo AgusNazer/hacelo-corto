@@ -19,6 +19,7 @@ Actualizar la landing para reflejar el alcance real actual de la app web, mostra
 - Se separaron `Timeline` y `Audio Editor` en una seccion destacada con layout en dos columnas y reproduccion automatica (`autoplay + muted + loop`) para mostrar ambos flujos lado a lado.
 - Se incorporo base de theming claro/oscuro en todo el frontend con `ThemeProvider` + toggle global persistido en `localStorage` (`hc-theme`).
 - Se migraron tokens globales de `frontend/src/app/globals.css` a variables CSS para soportar Catppuccin Mocha (dark) y Latte (light) sin romper la paleta principal del producto.
+- Se ajusto contraste del modo light en acciones criticas (ej. boton `Cerrar sesion`) y mensajes de error en tonos rose para mejorar legibilidad sobre fondos claros.
 - Se ajustaron FAQ y CTA para incluir integracion YouTube + metadata IA, audio editor y biblioteca de audios.
 
 ### Commits de esta rama (frontend)
