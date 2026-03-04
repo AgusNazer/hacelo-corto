@@ -23,6 +23,16 @@ type SocialTarget = {
   icon: ComponentType<{ size?: number; className?: string }>;
 };
 
+type ShareYoutubeDraft = {
+  title: string;
+  description: string;
+  privacy: "public" | "private" | "unlisted";
+  tone: YoutubeMetadataSuggestionTone;
+  hashtags: string[];
+  tags: string[];
+  provider: string | null;
+};
+
 const socialTargets: SocialTarget[] = [
   { id: "instagram", label: "Instagram", icon: Instagram },
   { id: "tiktok", label: "TikTok", icon: Music2 },
@@ -32,14 +42,22 @@ const socialTargets: SocialTarget[] = [
   { id: "whatsapp", label: "WhatsApp", icon: MessageCircle }
 ];
 
-function normalizeVideoError(error: unknown, fallbackMessage: string) {
+const shareDraftPrefix = "share:youtube-metadata";
+
+function getShareDraftKey(clipId: string, locale: string) {
+  return `${shareDraftPrefix}:${clipId}:${locale}`;
+}
+
+function normalizeVideoError(error: unknown, fallbackMessage: string, isEn: boolean) {
   if (error instanceof VideoApiError) {
     return error.message;
   }
   if (error instanceof Error) {
     const normalized = error.message.toLowerCase();
     if (normalized.includes("failed to fetch") || normalized.includes("networkerror")) {
-      return "No pudimos conectar con la API. Verifica que backend este levantado e intenta nuevamente.";
+      return isEn
+        ? "We could not connect to the API. Verify backend is running and try again."
+        : "No pudimos conectar con la API. Verifica que backend este levantado e intenta nuevamente.";
     }
     return error.message;
   }
@@ -52,6 +70,7 @@ export default function ShareClipPage() {
   const tr = useCallback((es: string, en: string) => (isEn ? en : es), [isEn]);
   const params = useParams<{ clipId: string }>();
   const clipId = params?.clipId ?? "";
+  const draftKey = useMemo(() => getShareDraftKey(clipId, locale), [clipId, locale]);
   const token = useAuthStore((state) => state.token);
 
   const [clip, setClip] = useState<UserClipItem | null>(null);
@@ -108,7 +127,7 @@ export default function ShareClipPage() {
         }
       } catch (loadError) {
         if (!cancelled) {
-          setError(normalizeVideoError(loadError, tr("No pudimos cargar el clip para compartir.", "We could not load clip to share.")));
+          setError(normalizeVideoError(loadError, tr("No pudimos cargar el clip para compartir.", "We could not load clip to share."), isEn));
         }
       } finally {
         if (!cancelled) {
@@ -141,22 +160,94 @@ export default function ShareClipPage() {
     return () => {
       cancelled = true;
     };
-  }, [clipId, token, tr]);
+  }, [clipId, token, tr, isEn]);
 
   useEffect(() => {
     if (!clip) {
       return;
     }
 
-    setYoutubeTitle(`Clip ${clip.job_id.slice(0, 8)} - Hacelo Corto`);
-    setYoutubeDescription(isEn ? `Clip generated from ${clip.source_filename}` : `Clip generado desde ${clip.source_filename}`);
-    setYoutubeHashtags([]);
-    setYoutubeTags([]);
-    setYoutubeMetadataProvider(null);
+    let appliedDraft = false;
+
+    try {
+      const raw = window.localStorage.getItem(draftKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<ShareYoutubeDraft>;
+        if (typeof parsed.title === "string") {
+          setYoutubeTitle(parsed.title);
+          appliedDraft = true;
+        }
+        if (typeof parsed.description === "string") {
+          setYoutubeDescription(parsed.description);
+          appliedDraft = true;
+        }
+        if (parsed.privacy === "private" || parsed.privacy === "unlisted" || parsed.privacy === "public") {
+          setYoutubePrivacy(parsed.privacy);
+          appliedDraft = true;
+        }
+        if (parsed.tone === "neutral" || parsed.tone === "energetic" || parsed.tone === "informative") {
+          setMetadataTone(parsed.tone);
+          appliedDraft = true;
+        }
+        if (Array.isArray(parsed.hashtags)) {
+          setYoutubeHashtags(parsed.hashtags.filter((item): item is string => typeof item === "string"));
+          appliedDraft = true;
+        }
+        if (Array.isArray(parsed.tags)) {
+          setYoutubeTags(parsed.tags.filter((item): item is string => typeof item === "string"));
+          appliedDraft = true;
+        }
+        if (typeof parsed.provider === "string" || parsed.provider === null) {
+          setYoutubeMetadataProvider(parsed.provider);
+          appliedDraft = true;
+        }
+      }
+    } catch {
+      window.localStorage.removeItem(draftKey);
+    }
+
+    if (!appliedDraft) {
+      setYoutubeTitle(`Clip ${clip.job_id.slice(0, 8)} - Hacelo Corto`);
+      setYoutubeDescription(isEn ? `Clip generated from ${clip.source_filename}` : `Clip generado desde ${clip.source_filename}`);
+      setYoutubeHashtags([]);
+      setYoutubeTags([]);
+      setYoutubeMetadataProvider(null);
+      setMetadataTone("neutral");
+      setYoutubePrivacy("private");
+    }
+
     setYoutubePublishStatus("idle");
     setYoutubePublishMessage(null);
     setYoutubePublishedUrl(null);
-  }, [clip, isEn]);
+  }, [clip, isEn, draftKey]);
+
+  useEffect(() => {
+    if (!clip) {
+      return;
+    }
+
+    const payload: ShareYoutubeDraft = {
+      title: youtubeTitle,
+      description: youtubeDescription,
+      privacy: youtubePrivacy,
+      tone: metadataTone,
+      hashtags: youtubeHashtags,
+      tags: youtubeTags,
+      provider: youtubeMetadataProvider
+    };
+
+    window.localStorage.setItem(draftKey, JSON.stringify(payload));
+  }, [
+    clip,
+    draftKey,
+    metadataTone,
+    youtubeDescription,
+    youtubeHashtags,
+    youtubeMetadataProvider,
+    youtubePrivacy,
+    youtubeTags,
+    youtubeTitle
+  ]);
 
   const handleConnectYoutube = async () => {
     setInfo(null);
@@ -195,7 +286,9 @@ export default function ShareClipPage() {
       setYoutubePublishMessage(tr("Publicacion completada correctamente.", "Publishing completed successfully."));
     } catch (publishError) {
       setYoutubePublishStatus("error");
-      setYoutubePublishMessage(normalizeVideoError(publishError, tr("No pudimos publicar el clip en YouTube.", "We could not publish clip on YouTube.")));
+      setYoutubePublishMessage(
+        normalizeVideoError(publishError, tr("No pudimos publicar el clip en YouTube.", "We could not publish clip on YouTube."), isEn)
+      );
     } finally {
       setIsPublishingYoutube(false);
     }
@@ -212,7 +305,7 @@ export default function ShareClipPage() {
     setInfo(null);
 
     try {
-      const suggestion = await videoApi.suggestYoutubeMetadata(clip.job_id, token, metadataTone);
+      const suggestion = await videoApi.suggestYoutubeMetadata(clip.job_id, token, metadataTone, locale);
       setYoutubeTitle(suggestion.title);
       setYoutubeDescription(suggestion.description);
       setYoutubeHashtags(suggestion.hashtags);
@@ -224,7 +317,13 @@ export default function ShareClipPage() {
           : `Metadata sugerida aplicada (${suggestion.generated_with_ai ? "IA" : "template"}).`
       );
     } catch (suggestError) {
-      setError(normalizeVideoError(suggestError, tr("No pudimos generar metadata sugerida para YouTube.", "We could not generate suggested metadata for YouTube.")));
+      setError(
+        normalizeVideoError(
+          suggestError,
+          tr("No pudimos generar metadata sugerida para YouTube.", "We could not generate suggested metadata for YouTube."),
+          isEn
+        )
+      );
     } finally {
       setIsSuggestingMetadata(false);
     }
