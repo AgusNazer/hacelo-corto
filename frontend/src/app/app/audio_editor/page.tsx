@@ -7,8 +7,10 @@ import { videoApi, type UserAudioItem, type UserClipItem, type UserVideoItem, Vi
 import { useAuthStore } from "@/src/store/useAuthStore";
 import { Music2 } from "lucide-react";
 import Link from "next/link";
+import { useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AudioTimeLine } from "@/src/components/home/videoEditAudioTimeLine/AudioTimeLine";
 
 const MIN_AUDIO_SEGMENT_SECONDS = 5;
 const AUDIO_EDITOR_DRAFT_KEY = "audio-editor:draft";
@@ -52,25 +54,28 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function getAudioJobProgress(status: string | null) {
+function getAudioJobProgress(status: string | null, isEn: boolean) {
   if (!status) {
     return null;
   }
 
   const normalized = status.toLowerCase();
   if (normalized === "done" || normalized === "completed") {
-    return { label: "Mezcla lista", percent: 100, isError: false };
+    return { label: isEn ? "Mix ready" : "Mezcla lista", percent: 100, isError: false };
   }
   if (normalized === "failed" || normalized === "error") {
-    return { label: "Mezcla con error", percent: 100, isError: true };
+    return { label: isEn ? "Mix failed" : "Mezcla con error", percent: 100, isError: true };
   }
   if (normalized === "running" || normalized === "processing" || normalized === "in_progress") {
-    return { label: "Procesando mezcla", percent: 68, isError: false };
+    return { label: isEn ? "Processing mix" : "Procesando mezcla", percent: 68, isError: false };
   }
-  return { label: "En cola", percent: 24, isError: false };
+  return { label: isEn ? "Queued" : "En cola", percent: 24, isError: false };
 }
 
 export default function AudioEditorPage() {
+  const locale = useLocale();
+  const isEn = locale === "en";
+  const tr = useCallback((es: string, en: string) => (isEn ? en : es), [isEn]);
   const searchParams = useSearchParams();
   const preferredVideoId = searchParams.get("videoId")?.trim() ?? "";
   const preferredClipId = searchParams.get("clipId")?.trim() ?? "";
@@ -94,7 +99,6 @@ export default function AudioEditorPage() {
   const [audioVolume, setAudioVolume] = useState(1);
   const [videoDurationSec, setVideoDurationSec] = useState(0);
   const [audioDurationSec, setAudioDurationSec] = useState(0);
-
   const [isSubmittingAudio, setIsSubmittingAudio] = useState(false);
   const [audioSubmitInfo, setAudioSubmitInfo] = useState<string | null>(null);
   const [audioSubmitError, setAudioSubmitError] = useState<string | null>(null);
@@ -107,7 +111,7 @@ export default function AudioEditorPage() {
   useEffect(() => {
     if (!token) {
       setIsLoadingVideos(false);
-      setVideoError("No encontramos una sesion activa para cargar videos.");
+      setVideoError(tr("No encontramos una sesion activa para cargar videos.", "No active session found to load videos."));
       return;
     }
 
@@ -137,7 +141,7 @@ export default function AudioEditorPage() {
           setVideos([]);
           setFocusedClip(null);
           setSelectedVideoId(null);
-          setVideoError("Selecciona un video o clip desde Biblioteca para abrir el Audio editor.");
+          setVideoError(tr("Selecciona un video o clip desde Biblioteca para abrir el Audio editor.", "Select a video or clip from Library to open Audio Editor."));
           return;
         }
 
@@ -160,7 +164,7 @@ export default function AudioEditorPage() {
         setSelectedVideoId(targetVideo.video_id);
       } catch (loadError) {
         if (!cancelled) {
-          setVideoError(normalizeVideoError(loadError, "No pudimos cargar tus videos."));
+          setVideoError(normalizeVideoError(loadError, tr("No pudimos cargar tus videos.", "We could not load your videos.")));
         }
       } finally {
         if (!cancelled) {
@@ -174,7 +178,7 @@ export default function AudioEditorPage() {
     return () => {
       cancelled = true;
     };
-  }, [token, preferredClipId, preferredVideoId]);
+  }, [token, preferredClipId, preferredVideoId, tr]);
 
   useEffect(() => {
     if (!token) {
@@ -202,7 +206,7 @@ export default function AudioEditorPage() {
         });
       } catch (loadError) {
         if (!cancelled) {
-          setAudioError(normalizeVideoError(loadError, "No pudimos cargar tus audios."));
+          setAudioError(normalizeVideoError(loadError, tr("No pudimos cargar tus audios.", "We could not load your audios.")));
         }
       } finally {
         if (!cancelled) {
@@ -216,7 +220,7 @@ export default function AudioEditorPage() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, tr]);
 
   useEffect(() => {
     if (!token || !selectedAudioId) {
@@ -368,7 +372,9 @@ export default function AudioEditorPage() {
         setAudioJobStatus(status.status);
 
         if (isDoneStatus(status.status)) {
-          setAudioSubmitInfo(`Mezcla de audio lista. Job ${audioJobId.slice(0, 8)} finalizado.`);
+          setAudioSubmitInfo(
+            isEn ? `Audio mix ready. Job ${audioJobId.slice(0, 8)} completed.` : `Mezcla de audio lista. Job ${audioJobId.slice(0, 8)} finalizado.`
+          );
         }
 
         if (isTerminalStatus(status.status) && (status.output_path || !isDoneStatus(status.status))) {
@@ -376,12 +382,14 @@ export default function AudioEditorPage() {
           setIsPollingAudioJob(false);
 
           if (!isDoneStatus(status.status)) {
-            setAudioSubmitError(`La mezcla termino con estado ${status.status}.`);
+            setAudioSubmitError(
+              isEn ? `Mix finished with ${status.status} state.` : `La mezcla termino con estado ${status.status}.`
+            );
           }
         }
       } catch {
         if (!cancelled) {
-          setAudioSubmitError("No pudimos actualizar el estado del job de mezcla.");
+          setAudioSubmitError(tr("No pudimos actualizar el estado del job de mezcla.", "We could not refresh mix job status."));
         }
       }
     };
@@ -398,7 +406,7 @@ export default function AudioEditorPage() {
       window.clearInterval(intervalId);
       setIsPollingAudioJob(false);
     };
-  }, [audioJobId, token]);
+  }, [audioJobId, token, isEn, tr]);
 
   const selectedVideo = useMemo(() => videos.find((video) => video.video_id === selectedVideoId) ?? null, [videos, selectedVideoId]);
   const previewUrl = mixedVideoUrl ?? focusedClip?.output_path ?? selectedVideo?.preview_url ?? null;
@@ -433,9 +441,11 @@ export default function AudioEditorPage() {
     if (videoDurationSec <= 0) {
       return 0;
     }
+    //  setDuracionVideo(Math.max(Math.floor(videoDurationSec)))
     return Math.max(Math.floor(videoDurationSec) - MIN_AUDIO_SEGMENT_SECONDS, 0);
   }, [videoDurationSec]);
 
+ 
   const maxAudioStartSec = useMemo(() => {
     if (audioDurationSec <= 0) {
       return 0;
@@ -443,11 +453,11 @@ export default function AudioEditorPage() {
     return Math.max(Math.floor(audioDurationSec) - MIN_AUDIO_SEGMENT_SECONDS, 0);
   }, [audioDurationSec]);
 
-  const maxAudioEndSec = useMemo(() => {
-    const byAudio = audioDurationSec > 0 ? Math.floor(audioDurationSec) : Number.POSITIVE_INFINITY;
-    const byVideo = videoDurationSec > 0 ? Math.floor(videoDurationSec) : Number.POSITIVE_INFINITY;
-    return Math.min(byAudio, byVideo);
-  }, [audioDurationSec, videoDurationSec]);
+  // const maxAudioEndSec = useMemo(() => {
+  //   const byAudio = audioDurationSec > 0 ? Math.floor(audioDurationSec) : Number.POSITIVE_INFINITY;
+  //   const byVideo = videoDurationSec > 0 ? Math.floor(videoDurationSec) : Number.POSITIVE_INFINITY;
+  //   return Math.min(byAudio, byVideo);
+  // }, [audioDurationSec, videoDurationSec]);
 
   useEffect(() => {
     const nextOffset = clamp(audioOffsetSec, 0, maxOffsetSec);
@@ -473,29 +483,33 @@ export default function AudioEditorPage() {
   }, [audioDurationSec, audioEndSec, audioOffsetSec, audioStartSec, maxAudioStartSec, maxOffsetSec, videoDurationSec]);
 
   const selectedSegmentDurationSec = Math.max(audioEndSec - audioStartSec, 0);
-  const audioJobProgress = getAudioJobProgress(audioJobStatus);
+  const audioJobProgress = getAudioJobProgress(audioJobStatus, isEn);
   const canSubmitAudioJob =
     Boolean(selectedVideoId) &&
     Boolean(selectedAudioId) &&
     selectedSegmentDurationSec >= MIN_AUDIO_SEGMENT_SECONDS &&
     (videoDurationSec <= 0 || audioOffsetSec + selectedSegmentDurationSec <= Math.floor(videoDurationSec));
 
-  const audioOffsetPct = videoDurationSec > 0 ? Math.min((audioOffsetSec / videoDurationSec) * 100, 100) : 0;
-  const audioWidthPct = videoDurationSec > 0 ? Math.min((selectedSegmentDurationSec / videoDurationSec) * 100, 100 - audioOffsetPct) : 0;
+  // const audioOffsetPct = videoDurationSec > 0 ? Math.min((audioOffsetSec / videoDurationSec) * 100, 100) : 0;
+  // const audioWidthPct = videoDurationSec > 0 ? Math.min((selectedSegmentDurationSec / videoDurationSec) * 100, 100 - audioOffsetPct) : 0;
 
   const handleAddAudioToVideo = async () => {
     if (!token || !selectedVideoId || !selectedAudioId) {
-      setAudioSubmitError("Selecciona video y audio para iniciar la mezcla.");
+      setAudioSubmitError(tr("Selecciona video y audio para iniciar la mezcla.", "Select video and audio to start mixing."));
       return;
     }
 
     if (selectedSegmentDurationSec < MIN_AUDIO_SEGMENT_SECONDS) {
-      setAudioSubmitError(`El segmento de audio debe durar al menos ${MIN_AUDIO_SEGMENT_SECONDS} segundos.`);
+      setAudioSubmitError(
+        isEn
+          ? `Audio segment must be at least ${MIN_AUDIO_SEGMENT_SECONDS} seconds long.`
+          : `El segmento de audio debe durar al menos ${MIN_AUDIO_SEGMENT_SECONDS} segundos.`
+      );
       return;
     }
 
     if (videoDurationSec > 0 && audioOffsetSec + selectedSegmentDurationSec > Math.floor(videoDurationSec)) {
-      setAudioSubmitError("La pista de audio no puede exceder la duracion total del video.");
+      setAudioSubmitError(tr("La pista de audio no puede exceder la duracion total del video.", "Audio track cannot exceed full video duration."));
       return;
     }
 
@@ -516,93 +530,79 @@ export default function AudioEditorPage() {
 
       setAudioJobId(response.job_id);
       setAudioJobStatus(response.status);
-      setAudioSubmitInfo(`Mezcla enviada a cola. Job ${response.job_id.slice(0, 8)} en estado ${response.status}.`);
+      setAudioSubmitInfo(
+        isEn
+          ? `Mix sent to queue. Job ${response.job_id.slice(0, 8)} in ${response.status} state.`
+          : `Mezcla enviada a cola. Job ${response.job_id.slice(0, 8)} en estado ${response.status}.`
+      );
     } catch (mixError) {
-      setAudioSubmitError(normalizeVideoError(mixError, "No pudimos enviar el job para mezclar audio."));
+      setAudioSubmitError(normalizeVideoError(mixError, tr("No pudimos enviar el job para mezclar audio.", "We could not submit the audio mix job.")));
     } finally {
       setIsSubmittingAudio(false);
     }
   };
 
+  const isTimelineReady = selectedAudioUrl !== null && videoDurationSec > 0;
+
+  const handleRegionChange = useCallback((start: number, end: number) => {
+    setAudioStartSec(start);
+    setAudioEndSec(end);
+  }, []);
   return (
     <section className="w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="grid gap-5 xl:grid-cols-[1.5fr_1fr]">
         <Panel>
           <p className="text-xs uppercase tracking-[0.22em] text-white/65">audio editor</p>
-          <h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">Video + pista de audio</h3>
+          <h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">{tr("Video + pista de audio", "Video + audio track")}</h3>
 
           <div className="mt-3 rounded-xl border border-neon-violet/30 bg-neon-violet/10 px-3 py-2 text-xs text-neon-violet/90">
-            Para cambiar de video, abrilo desde Biblioteca en la card de video o clip.
+            {tr("Para cambiar de video, abrilo desde Biblioteca en la card de video o clip.", "To switch video, open it from Library from a video or clip card.")}
           </div>
 
           {isLoadingVideos ? (
-            <p className="mt-4 text-sm text-white/70">Cargando videos...</p>
+            <p className="mt-4 text-sm text-white/70">{tr("Cargando videos...", "Loading videos...")}</p>
           ) : videoError ? (
             <p className="mt-4 rounded-xl border border-rose-400/35 bg-rose-400/10 px-3 py-2 text-sm text-rose-200">{videoError}</p>
           ) : previewUrl ? (
             <>
               {mixedVideoUrl ? (
                 <p className="mt-3 inline-flex rounded-full border border-neon-mint/35 bg-neon-mint/10 px-2 py-1 text-[11px] uppercase tracking-[0.14em] text-neon-mint">
-                  Preview del resultado mezclado
+                  {tr("Preview del resultado mezclado", "Mixed result preview")}
                 </p>
               ) : null}
               <VideoPreview videoPreviewUrl={previewUrl} onTrimChange={() => {}} />
             </>
           ) : (
-            <p className="mt-4 text-sm text-white/70">Selecciona un video con preview disponible.</p>
+            <p className="mt-4 text-sm text-white/70">{tr("Selecciona un video con preview disponible.", "Select a video with available preview.")}</p>
           )}
-
-          <div className="mt-4 rounded-xl border border-neon-violet/30 bg-neon-violet/5 p-3">
-            <p className="text-xs uppercase tracking-[0.16em] text-neon-violet/85">Pistas</p>
-            <div className="mt-2 grid gap-2">
-              <div className="rounded-lg border border-white/10 bg-night-900/80 p-2">
-                <p className="text-[11px] text-white/65">Track video</p>
-                <div className="mt-2 h-6 rounded bg-gradient-to-r from-sky-400/25 to-sky-300/60" />
-              </div>
-              <div className="rounded-lg border border-white/10 bg-night-900/80 p-2">
-                <div className="flex items-center justify-between text-[11px] text-white/65">
-                  <span>Track audio</span>
-                  <span>
-                    {toTimeLabel(audioStartSec)} - {toTimeLabel(audioEndSec)}
-                  </span>
-                </div>
-                <div className="mt-2 h-6 overflow-hidden rounded bg-night-950/90">
-                  <div
-                    className="h-full rounded bg-gradient-to-r from-neon-violet/65 to-neon-magenta/75"
-                    style={{
-                      marginLeft: `${audioOffsetPct}%`,
-                      width: `${Math.max(audioWidthPct, 2)}%`
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+          {isTimelineReady ? (
+            <AudioTimeLine videoDurationSec={videoDurationSec} selectedAudioUrl={selectedAudioUrl} regionChange={handleRegionChange} />
+          ) : null}
 
           {!isLoadingVideos && !selectedVideoId ? (
             <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white/80">
-              <p>No hay video seleccionado para este editor.</p>
+              <p>{tr("No hay video seleccionado para este editor.", "No video selected for this editor.")}</p>
               <Link
                 href="/app/library"
                 className="mt-3 inline-flex items-center justify-center rounded-lg border border-neon-violet/40 bg-neon-violet/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-neon-violet transition hover:bg-neon-violet/20"
               >
-                Ir a Biblioteca
+                {tr("Ir a Biblioteca", "Go to Library")}
               </Link>
             </div>
           ) : null}
         </Panel>
 
         <Panel>
-          <p className="text-xs uppercase tracking-[0.22em] text-white/65">mezcla</p>
-          <h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">Ajustes de audio</h3>
+          <p className="text-xs uppercase tracking-[0.22em] text-white/65">{tr("mezcla", "mix")}</p>
+          <h3 className="mt-1 font-display text-2xl text-white sm:text-3xl">{tr("Ajustes de audio", "Audio settings")}</h3>
 
-          {isLoadingAudios ? <p className="mt-3 text-sm text-white/70">Cargando audios...</p> : null}
+          {isLoadingAudios ? <p className="mt-3 text-sm text-white/70">{tr("Cargando audios...", "Loading audios...")}</p> : null}
           {audioError ? <p className="mt-3 text-sm text-rose-200">{audioError}</p> : null}
 
           {!isLoadingAudios && audios.length > 0 ? (
             <>
               <label className="mt-3 block text-xs text-white/75">
-                Audio de biblioteca
+                {tr("Audio de biblioteca", "Library audio")}
                 <select
                   value={selectedAudioId ?? ""}
                   onChange={(event) => setSelectedAudioId(event.target.value || null)}
@@ -628,68 +628,19 @@ export default function AudioEditorPage() {
               ) : null}
 
               <p className="mt-2 text-[11px] text-white/65">
-                Duracion de video: {videoDurationSec > 0 ? toTimeLabel(videoDurationSec) : "-"} · Duracion de audio: {audioDurationSec > 0 ? toTimeLabel(audioDurationSec) : "-"}
+                 {tr("Duracion de video", "Video duration")}: {videoDurationSec > 0 ? toTimeLabel(videoDurationSec) : "-"} · {tr("Duracion de audio", "Audio duration")}: {audioDurationSec > 0 ? toTimeLabel(audioDurationSec) : "-"}
               </p>
-
-              <div className="mt-3 rounded-xl border border-white/12 bg-white/5 p-3 text-xs text-white/80">
-                <p className="text-neon-violet">Referencia rapida</p>
-                <p className="mt-1">- `offset en video`: segundo del video donde empieza a sonar el audio.</p>
-                <p>- `inicio audio`: desde que segundo del archivo de audio recortas.</p>
-                <p>- `fin audio`: hasta que segundo del archivo de audio usas.</p>
-                <p>- `volumen`: ganancia del audio agregado (1 = normal, 2 = fuerte).</p>
-              </div>
 
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <label className="text-xs text-white/75">
-                  Offset en video (seg)
+                  {tr("Volumen (1 - 2)", "Volume (1 - 2)")}
                   <input
                     type="number"
-                    min={0}
-                    max={maxOffsetSec}
-                    value={audioOffsetSec}
-                    onChange={(event) => setAudioOffsetSec(clamp(Number(event.target.value || 0), 0, maxOffsetSec))}
-                    className="mt-1 w-full rounded-lg border border-white/20 bg-night-900/80 px-3 py-2 text-xs text-white outline-none focus:border-neon-violet/50"
-                  />
-                </label>
-                 <label className="text-xs text-white/75">
-                   Volumen (1 - 2)
-                   <input
-                     type="number"
-                     min={1}
-                     max={2}
-                     step={1}
-                     value={audioVolume}
-                     onChange={(event) => setAudioVolume(clamp(Number(event.target.value || 1), 1, 2))}
-                     className="mt-1 w-full rounded-lg border border-white/20 bg-night-900/80 px-3 py-2 text-xs text-white outline-none focus:border-neon-violet/50"
-                   />
-                 </label>
-                <label className="text-xs text-white/75">
-                  Inicio audio (seg)
-                  <input
-                    type="number"
-                    min={0}
-                    max={maxAudioStartSec}
-                    value={audioStartSec}
-                    onChange={(event) => setAudioStartSec(clamp(Number(event.target.value || 0), 0, maxAudioStartSec))}
-                    className="mt-1 w-full rounded-lg border border-white/20 bg-night-900/80 px-3 py-2 text-xs text-white outline-none focus:border-neon-violet/50"
-                  />
-                </label>
-                <label className="text-xs text-white/75">
-                  Fin audio (seg)
-                  <input
-                    type="number"
-                    min={audioStartSec + MIN_AUDIO_SEGMENT_SECONDS}
-                    max={Math.max(audioStartSec + MIN_AUDIO_SEGMENT_SECONDS, maxAudioEndSec)}
-                    value={audioEndSec}
-                    onChange={(event) =>
-                      setAudioEndSec(
-                        clamp(
-                          Number(event.target.value || audioStartSec + MIN_AUDIO_SEGMENT_SECONDS),
-                          audioStartSec + MIN_AUDIO_SEGMENT_SECONDS,
-                          Math.max(audioStartSec + MIN_AUDIO_SEGMENT_SECONDS, maxAudioEndSec)
-                        )
-                      )
-                    }
+                    min={1}
+                    max={2}
+                    step={1}
+                    value={audioVolume}
+                    onChange={(event) => setAudioVolume(clamp(Number(event.target.value || 1), 1, 2))}
                     className="mt-1 w-full rounded-lg border border-white/20 bg-night-900/80 px-3 py-2 text-xs text-white outline-none focus:border-neon-violet/50"
                   />
                 </label>
@@ -697,9 +648,12 @@ export default function AudioEditorPage() {
 
               {!canSubmitAudioJob ? (
                 <p className="mt-2 text-xs text-amber-200">
-                  Ajusta la pista para que no exceda la duracion del video y tenga al menos {MIN_AUDIO_SEGMENT_SECONDS}s.
-                </p>
-              ) : null}
+                   {tr(
+                     `Ajusta la pista para que no exceda la duracion del video y tenga al menos ${MIN_AUDIO_SEGMENT_SECONDS}s.`,
+                     `Adjust track so it does not exceed video duration and lasts at least ${MIN_AUDIO_SEGMENT_SECONDS}s.`
+                   )}
+                 </p>
+               ) : null}
 
               <button
                 type="button"
@@ -707,12 +661,12 @@ export default function AudioEditorPage() {
                 disabled={!canSubmitAudioJob || isSubmittingAudio}
                 className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-neon-violet/45 bg-neon-violet/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-neon-violet transition hover:bg-neon-violet/20 disabled:opacity-40"
               >
-                <Music2 size={14} /> {isSubmittingAudio ? "Encolando..." : "Aplicar audio al video"}
+                <Music2 size={14} /> {isSubmittingAudio ? tr("Encolando...", "Queueing...") : tr("Aplicar audio al video", "Apply audio to video")}
               </button>
 
               {audioSubmitInfo ? <p className="mt-2 text-xs text-neon-mint">{audioSubmitInfo}</p> : null}
               {audioSubmitError ? <p className="mt-2 text-xs text-rose-200">{audioSubmitError}</p> : null}
-              {isPollingAudioJob ? <p className="mt-2 text-xs text-white/65">Procesando mezcla de audio...</p> : null}
+              {isPollingAudioJob ? <p className="mt-2 text-xs text-white/65">{tr("Procesando mezcla de audio...", "Processing audio mix...")}</p> : null}
 
               {audioJobProgress ? (
                 <div className="mt-3 rounded-xl border border-white/12 bg-white/5 p-3">
@@ -732,7 +686,7 @@ export default function AudioEditorPage() {
           ) : null}
 
           {!isLoadingAudios && audios.length === 0 ? (
-            <p className="mt-3 text-sm text-white/70">No hay audios cargados. Subi uno desde Home para mezclarlo aca.</p>
+            <p className="mt-3 text-sm text-white/70">{tr("No hay audios cargados. Subi uno desde Home para mezclarlo aca.", "No audios uploaded yet. Upload one from Home to mix it here.")}</p>
           ) : null}
         </Panel>
       </div>
