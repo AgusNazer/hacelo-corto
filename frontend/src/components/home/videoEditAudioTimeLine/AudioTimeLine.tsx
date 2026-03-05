@@ -36,6 +36,18 @@ function toRgbaFromHex(color: string, alpha: number) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function isAbortLikeError(error: unknown) {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return true;
+  }
+
+  if (error instanceof Error && error.name.toLowerCase() === "aborterror") {
+    return true;
+  }
+
+  return false;
+}
+
 export function AudioTimeLine({ videoDurationSec, selectedAudioUrl, regionChange }: PropTimeLine) {
   const wsRef = useRef<WaveSurfer | null>(null);
   const regionsRef = useRef<InstanceType<typeof RegionsPlugin> | null>(null);
@@ -82,8 +94,8 @@ export function AudioTimeLine({ videoDurationSec, selectedAudioUrl, regionChange
       try {
         ws.destroy();
       } catch (error) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          throw error;
+        if (!isAbortLikeError(error)) {
+          console.warn("AudioTimeLine cleanup warning", error);
         }
       } finally {
         wsRef.current = null;
