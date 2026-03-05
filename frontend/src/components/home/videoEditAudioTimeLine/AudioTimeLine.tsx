@@ -1,128 +1,197 @@
-import { Pause, Play } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
-import WaveSurfer from "wavesurfer.js"
-import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js"
+"use client";
+
+import { Pause, Play } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import WaveSurfer from "wavesurfer.js";
+import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
 
 type PropTimeLine = {
-  videoDurationSec: number,
-  selectedAudioUrl: string | null,
-regionChange?: (start: number, end: number) => void
+  videoDurationSec: number;
+  selectedAudioUrl: string | null;
+  regionChange?: (start: number, end: number) => void;
+};
 
+function secondsToLabel(value: number) {
+  const safe = Math.max(0, Math.floor(value));
+  const minutes = Math.floor(safe / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = Math.floor(safe % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${minutes}:${seconds}`;
 }
-export function AudioTimeLine({
-  videoDurationSec,
-  selectedAudioUrl,
-  regionChange
-}: PropTimeLine) {
-  const wsRef = useRef<WaveSurfer | null>(null)
-  const regionsRef = useRef<InstanceType<typeof RegionsPlugin> | null>(null)
-  const containerRef = useRef<HTMLDivElement | null>(null)
-    const [isPlaying, setIsPlaying] = useState(false);
-  
-const regionRef = useRef<ReturnType<
-  InstanceType<typeof RegionsPlugin>["addRegion"]
-> | null>(null)
-  // ✅ 1️⃣ Crear instancia SOLO una vez
+
+function toRgbaFromHex(color: string, alpha: number) {
+  const hex = color.trim();
+  const normalized = hex.startsWith("#") ? hex.slice(1) : hex;
+  const valid = normalized.length === 6;
+  if (!valid) {
+    return `rgba(137, 220, 235, ${alpha})`;
+  }
+
+  const r = Number.parseInt(normalized.slice(0, 2), 16);
+  const g = Number.parseInt(normalized.slice(2, 4), 16);
+  const b = Number.parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+export function AudioTimeLine({ videoDurationSec, selectedAudioUrl, regionChange }: PropTimeLine) {
+  const wsRef = useRef<WaveSurfer | null>(null);
+  const regionsRef = useRef<InstanceType<typeof RegionsPlugin> | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const regionRef = useRef<ReturnType<InstanceType<typeof RegionsPlugin>["addRegion"]> | null>(null);
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
+
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!containerRef.current) {
+      return;
+    }
 
-    // 🔥 limpiar contenedor SIEMPRE
-    containerRef.current.innerHTML = ""
+    containerRef.current.innerHTML = "";
+    const styles = getComputedStyle(document.documentElement);
+    const neonCyan = styles.getPropertyValue("--hc-neon-cyan") || "#89dceb";
+    const neonMagenta = styles.getPropertyValue("--hc-neon-magenta") || "#f5c2e7";
+    const neonViolet = styles.getPropertyValue("--hc-neon-violet") || "#cba6f7";
 
-    const regions = RegionsPlugin.create()
-
+    const regions = RegionsPlugin.create();
     const ws = WaveSurfer.create({
       container: containerRef.current,
-      waveColor: "rgb(200, 0, 200)",
-      progressColor: "rgb(100, 0, 100)",
-      plugins: [regions],
-    })
+      height: 72,
+      barWidth: 3,
+      barGap: 2,
+      barRadius: 999,
+      cursorWidth: 2,
+      normalize: true,
+      waveColor: toRgbaFromHex(neonCyan, 0.4),
+      progressColor: toRgbaFromHex(neonMagenta, 0.7),
+      cursorColor: toRgbaFromHex(neonViolet, 0.95),
+      plugins: [regions]
+    });
 
-    wsRef.current = ws
-    regionsRef.current = regions
+    ws.on("play", () => setIsPlaying(true));
+    ws.on("pause", () => setIsPlaying(false));
+    ws.on("finish", () => setIsPlaying(false));
+
+    wsRef.current = ws;
+    regionsRef.current = regions;
 
     return () => {
-      ws.destroy()
-      wsRef.current = null
-      regionsRef.current = null
-    }
-  }, []) // 👈 solo una vez
+      try {
+        ws.destroy();
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          throw error;
+        }
+      } finally {
+        wsRef.current = null;
+        regionsRef.current = null;
+        regionRef.current = null;
+      }
+    };
+  }, []);
 
-  // ✅ 2️⃣ Cargar audio cuando cambia
   useEffect(() => {
-    if (!wsRef.current) return
-    if (!selectedAudioUrl) return
+    const ws = wsRef.current;
+    const regions = regionsRef.current;
 
-    const ws = wsRef.current
+    if (!ws || !regions || !selectedAudioUrl) {
+      return;
+    }
 
-    ws.load(selectedAudioUrl)
+    let cancelled = false;
+    ws.stop();
+    setIsPlaying(false);
+    ws.load(selectedAudioUrl);
 
     ws.once("ready", () => {
-      const audioDuration = ws.getDuration()
-      if (!Number.isFinite(audioDuration) || audioDuration <= 0) {
-        return
+      if (cancelled) {
+        return;
       }
 
-      regionsRef.current?.clearRegions()
+      const audioDuration = ws.getDuration();
+      if (!Number.isFinite(audioDuration) || audioDuration <= 0) {
+        return;
+      }
 
-      const maxRegionLength = Math.max(Math.min(videoDurationSec, audioDuration), 0.5)
-      const minRegionLength = Math.min(5, maxRegionLength)
+      regions.clearRegions();
+      const maxRegionLength = Math.max(Math.min(videoDurationSec, audioDuration), 0.5);
+      const minRegionLength = Math.min(5, maxRegionLength);
 
-      const region =regionsRef.current?.addRegion({
+      const region = regions.addRegion({
         start: 0,
         end: maxRegionLength,
         minLength: minRegionLength,
         maxLength: maxRegionLength,
-        content: "Selecciona tramo",
-        color: "rgba(180, 120, 255, 0.25)",
+        color: "rgba(203, 166, 247, 0.25)",
         drag: true,
-        resize: true,
-      })
-      if(region){
-        regionRef.current = region
+        resize: true
+      });
 
-      }
-      // 🔥 Escuchar cuando el usuario termina de mover
-      region?.on("update-end", () => {
-        const { start, end } = region
-        regionChange?.(Math.floor(start),Math.floor( end))
-      })
+      regionRef.current = region;
+      const nextStart = Math.floor(region.start);
+      const nextEnd = Math.floor(region.end);
+      setSelection({ start: nextStart, end: nextEnd });
+      regionChange?.(nextStart, nextEnd);
 
-      regionChange?.(0, Math.floor(maxRegionLength))
-    })
-  }, [selectedAudioUrl,videoDurationSec,regionChange]) 
- const playRegion = () => {
-    // const regions = regionsRef.current?.getRegions()
-    // const firstRegion = regions ? Object.values(regions)[0] : null
-  const ws = wsRef.current
+      region.on("update-end", () => {
+        if (cancelled) {
+          return;
+        }
+        const start = Math.floor(region.start);
+        const end = Math.floor(region.end);
+        setSelection({ start, end });
+        regionChange?.(start, end);
+      });
+    });
 
-    if (ws?.isPlaying()) {
-        setIsPlaying(false)
-    ws.pause()
-  } else {
-    setIsPlaying(true)
-    ws?.play(
-      regionRef.current?.start,
-      regionRef.current?.end
-    )
-  }
-  }
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAudioUrl, videoDurationSec, regionChange]);
+
+  const playRegion = () => {
+    const ws = wsRef.current;
+    const region = regionRef.current;
+
+    if (!ws || !region) {
+      return;
+    }
+
+    if (ws.isPlaying()) {
+      ws.pause();
+      return;
+    }
+
+    ws.play(region.start, region.end);
+  };
 
   return (
-    <div>
+    <div className="mt-4 rounded-xl border border-white/12 bg-white/5 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] uppercase tracking-[0.14em] text-neon-violet/90">Seleccion de audio</p>
+        <p className="text-[11px] text-white/70">
+          {secondsToLabel(selection.start)} - {secondsToLabel(selection.end)}
+        </p>
+      </div>
+
+      <div className="mt-2 overflow-hidden rounded-lg border border-white/10 bg-night-900/70 px-2 py-2">
         <div ref={containerRef} />
-      
-            {/* <button onClick={playRegion}>Play selección</button> */}
-            
+      </div>
+
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="text-[11px] text-white/60">Arrastra y redimensiona la region para elegir el tramo.</p>
         <button
           type="button"
-         onClick={playRegion}
-          className="inline-flex h-10 w-10 items-center justify-center self-center rounded-full border border-neon-violet/45 bg-neon-violet/15 text-neon-violet transition hover:bg-neon-violet/25"
+          onClick={playRegion}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-neon-violet/45 bg-neon-violet/15 text-neon-violet transition hover:bg-neon-violet/25"
           aria-label={isPlaying ? "Pausar audio" : "Reproducir audio"}
         >
-          {isPlaying ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
+          {isPlaying ? <Pause size={15} /> : <Play size={15} className="ml-0.5" />}
         </button>
-        
+      </div>
     </div>
-  )
+  );
 }
