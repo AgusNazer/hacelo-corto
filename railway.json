@@ -1,0 +1,119 @@
+{
+  "description": "Configuración esperada para Railway Deploy",
+  "services": {
+    "api": {
+      "name": "hacelo-api",
+      "dockerfile": "backend/api/Dockerfile",
+      "port": 8000,
+      "healthCheck": {
+        "path": "/api/v1/health",
+        "interval": 30,
+        "timeout": 10,
+        "retries": 3
+      },
+      "resources": {
+        "memory": 512,
+        "cpu": 0.5,
+        "replicas": 1
+      },
+      "environment": {
+        "DEBUG": "False",
+        "LOG_FORMAT": "json",
+        "ENVIRONMENT": "production"
+      },
+      "secrets": [
+        "DATABASE_URL",
+        "REDIS_HOST",
+        "REDIS_PORT",
+        "MINIO_ENDPOINT",
+        "MINIO_PUBLIC_ENDPOINT",
+        "MINIO_ACCESS_KEY",
+        "MINIO_SECRET_KEY"
+      ]
+    },
+    "frontend": {
+      "name": "hacelo-frontend",
+      "dockerfile": "frontend/Dockerfile",
+      "port": 3000,
+      "healthCheck": {
+        "path": "/",
+        "interval": 30,
+        "timeout": 10,
+        "retries": 3
+      },
+      "resources": {
+        "memory": 256,
+        "cpu": 0.5,
+        "replicas": 1
+      },
+      "environment": {
+        "NODE_ENV": "production",
+        "NEXT_PUBLIC_DEFAULT_LOCALE": "es"
+      },
+      "secrets": [
+        "NEXT_PUBLIC_API_BASE_URL"
+      ]
+    },
+    "postgres": {
+      "name": "hacelo-postgres",
+      "image": "postgres:15-alpine",
+      "version": "15",
+      "port": 5432,
+      "resources": {
+        "memory": 1000,
+        "cpu": 1,
+        "storage": "10GB"
+      },
+      "backups": {
+        "enabled": true,
+        "retention": 7
+      }
+    },
+    "redis": {
+      "name": "hacelo-redis",
+      "image": "redis:7-alpine",
+      "port": 6379,
+      "resources": {
+        "memory": 256,
+        "cpu": 0.5
+      }
+    }
+  },
+  "networking": {
+    "apiDomain": "[tu-api-domain].railway.app",
+    "frontendDomain": "[tu-frontend-domain].railway.app",
+    "cors": {
+      "allowedOrigins": [
+        "https://[tu-frontend-domain].railway.app"
+      ]
+    }
+  },
+  "deploymentChecklist": {
+    "github_connected": false,
+    "dockerfiles_created": true,
+    "env_variables_set": false,
+    "database_initialized": false,
+    "migrations_run": false,
+    "health_checks_verified": false,
+    "domains_configured": false,
+    "monitoring_enabled": false
+  },
+  "estimatedCosts": {
+    "currency": "USD",
+    "monthly": {
+      "api": 7,
+      "frontend": 5,
+      "postgres": 20,
+      "redis": 5,
+      "total": 37
+    }
+  },
+  "notes": [
+    "Railway auto-detectará los Dockerfiles si están en el root o en subdirectorios",
+    "Configura el Root Directory en cada servicio: backend/api para API, frontend para Frontend",
+    "Las variables de base de datos se inyectan automáticamente",
+    "Los secretos deben configurarse en Railway Console",
+    "Las migraciones de base de datos deben ejecutarse antes del primer deploy",
+    "Usa next-intl para internacionalización en el frontend"
+  ]
+}

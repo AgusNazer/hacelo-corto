@@ -1,76 +1,129 @@
+version: '3.8'
+
 services:
 
   api:
-    build: ./api
-    container_name: fastapi
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: hacelo_api
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fastapi_db
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-hacelo_db}
       - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - MINIO_ENDPOINT=minio:9000
       - MINIO_PUBLIC_ENDPOINT=localhost:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
       - DEBUG=True
-      - LOG_FORMAT=text
+      - LOG_FORMAT=json
     depends_on:
-      - db
-      - redis
-      - minio
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
     volumes:
       - ./api:/app
+    restart: unless-stopped
 
   worker:
     build:
       context: .
       dockerfile: worker/Dockerfile
-    container_name: worker
+    container_name: hacelo_worker
     environment:
       - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - MINIO_ENDPOINT=minio:9000
       - MINIO_PUBLIC_ENDPOINT=localhost:9000
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fastapi_db
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-hacelo_db}
       - WORKER_PIPELINE_DEBUG=false
       - WORKER_SOURCE_CACHE_DIR=/app/tmp/source_cache
       - WORKER_SOURCE_CACHE_TTL_SECONDS=1800
     depends_on:
-      - redis
-      - minio
-      - db
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      db:
+        condition: service_healthy
     volumes:
       - ./api/app:/app/app
       - ./worker:/app/worker
+    restart: unless-stopped
 
   redis:
-    image: redis:7
-    container_name: redis
+    image: redis:7-alpine
+    container_name: hacelo_redis
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
 
   db:
-    image: postgres:15
-    container_name: postgres
+    image: postgres:15-alpine
+    container_name: hacelo_db
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=fastapi_db
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+      - POSTGRES_DB=${DB_NAME:-hacelo_db}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
 
   minio:
-    image: minio/minio
-    container_name: minio
+    image: minio/minio:latest
+    container_name: hacelo_minio
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
       - "9001:9001"
     environment:
-      - MINIO_ROOT_USER=minio
-      - MINIO_ROOT_PASSWORD=miniopass #requiere 8 caracteres como minimo
-      - MINIO_DEFAULT_BUCKETS=buck1
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
     volumes:
       - minio_data:/data
+    restart: unless-stopped
 
+  # Frontend (opcional para desarrollo)
+  # frontend:
+  #   build:
+  #     context: ../frontend
+  #     dockerfile: Dockerfile
+  #   container_name: hacelo_frontend
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NEXT_PUBLIC_API_URL=http://localhost:8000
+  #   depends_on:
+  #     - api
+  #   restart: unless-stopped
 
 volumes:
   pgdata:
+  redis_data:
   minio_data:
+
+networks:
+  default:
+    name: hacelo_network
+
