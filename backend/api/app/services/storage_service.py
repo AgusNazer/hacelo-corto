@@ -1,6 +1,7 @@
 import boto3
 
 from uuid import uuid4
+from urllib.parse import urlparse
 
 from botocore.config import Config
 from botocore.exceptions import ClientError
@@ -27,8 +28,16 @@ class StorageService:
 
 
     def _create_s3_client(self, endpoint: str, secure: bool) -> boto3.client:
-        scheme = "https" if secure else "http"
-        endpoint_url = f"{scheme}://{endpoint}"
+        raw_endpoint = endpoint.strip().rstrip("/")
+
+        if raw_endpoint.startswith("http://") or raw_endpoint.startswith("https://"):
+            parsed = urlparse(raw_endpoint)
+            endpoint_url = f"{parsed.scheme}://{parsed.netloc}"
+        else:
+            clean_endpoint = raw_endpoint.split("/", 1)[0]
+            scheme = "https" if secure else "http"
+            endpoint_url = f"{scheme}://{clean_endpoint}"
+
         return boto3.client(
             "s3",
             endpoint_url=endpoint_url,

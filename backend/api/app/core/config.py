@@ -37,6 +37,24 @@ class Settings(BaseSettings):
 
         return values
 
+    @model_validator(mode="before")
+    @classmethod
+    def populate_minio_settings(cls, values):
+        minio_url = values.get("MINIO_URL") or values.get("S3_ENDPOINT") or values.get("S3_ENDPOINT_URL")
+        if minio_url and not values.get("MINIO_ENDPOINT"):
+            values["MINIO_ENDPOINT"] = minio_url
+
+        if values.get("AWS_ACCESS_KEY_ID") and not values.get("MINIO_ACCESS_KEY"):
+            values["MINIO_ACCESS_KEY"] = values.get("AWS_ACCESS_KEY_ID")
+
+        if values.get("AWS_SECRET_ACCESS_KEY") and not values.get("MINIO_SECRET_KEY"):
+            values["MINIO_SECRET_KEY"] = values.get("AWS_SECRET_ACCESS_KEY")
+
+        if values.get("S3_BUCKET") and not values.get("MINIO_BUCKET_VIDEOS"):
+            values["MINIO_BUCKET_VIDEOS"] = values.get("S3_BUCKET")
+
+        return values
+
     @field_validator("DATABASE_URL")
     @classmethod
     def validate_database_url(cls, v):
