@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 import secrets
 
 
@@ -13,14 +13,36 @@ class Settings(BaseSettings):
     DEBUG: bool = Field(default=False)
     ENVIRONMENT: str = Field(default="development")
 
-    DATABASE_URL: str = Field(...)
+    DATABASE_URL: str = Field(default="postgresql://postgres:postgres@localhost:5432/postgres")
     DB_POOL_SIZE: int = Field(default=10)
     DB_MAX_OVERFLOW: int = Field(default=20)
     DB_ECHO: bool = Field(default=False)
 
+    @model_validator(mode="before")
+    @classmethod
+    def populate_database_url(cls, values):
+        database_url = values.get("DATABASE_URL")
+        if database_url:
+            return values
+
+        pg_host = values.get("PGHOST")
+        pg_port = values.get("PGPORT", "5432")
+        pg_user = values.get("PGUSER")
+        pg_password = values.get("PGPASSWORD")
+        pg_database = values.get("PGDATABASE")
+
+        if pg_host and pg_user and pg_password and pg_database:
+            values["DATABASE_URL"] = (
+                f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
+            )
+
+        return values
+
     @field_validator("DATABASE_URL")
     @classmethod
     def validate_database_url(cls, v):
+        if v.startswith("postgres://"):
+            v = "postgresql://" + v[len("postgres://") :]
         if not v.startswith("postgresql://"):
             raise ValueError("DATABASE_URL debe comenzar con postgresql://")
         return v
