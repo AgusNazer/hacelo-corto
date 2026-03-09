@@ -80,16 +80,18 @@ class Settings(BaseSettings):
     MINIO_PUBLIC_ENDPOINT: str | None = Field(default=None)
     MINIO_PUBLIC_SECURE: bool | None = Field(default=None)
 
-    SECRET_KEY: str = Field(default="hacelo-corto-demo-secret-key-2026-please-change")
+    SECRET_KEY: str = Field(default="")
     ALGORITHM: str = Field(default="HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60 * 24 * 7)
 
     @field_validator("SECRET_KEY")
     @classmethod
     def validate_secret_key(cls, v, info):
-        if info.data.get("ENVIRONMENT") == "production" and len(v) < 32:
+        if not v or not v.strip():
+            raise ValueError("SECRET_KEY es obligatorio y debe definirse por variable de entorno")
+        if len(v) < 32:
             raise ValueError(
-                "SECRET_KEY debe tener al menos 32 caracteres en producción"
+                "SECRET_KEY debe tener al menos 32 caracteres"
             )
         return v
 
