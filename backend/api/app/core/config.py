@@ -40,9 +40,32 @@ class Settings(BaseSettings):
     @model_validator(mode="before")
     @classmethod
     def populate_minio_settings(cls, values):
-        minio_url = values.get("MINIO_URL") or values.get("S3_ENDPOINT") or values.get("S3_ENDPOINT_URL")
+        minio_url = (
+            values.get("MINIO_ENDPOINT")
+            or values.get("MINIO_URL")
+            or values.get("MINIO_PRIVATE_URL")
+            or values.get("S3_ENDPOINT")
+            or values.get("S3_ENDPOINT_URL")
+        )
         if minio_url and not values.get("MINIO_ENDPOINT"):
             values["MINIO_ENDPOINT"] = minio_url
+
+        minio_public_url = (
+            values.get("MINIO_PUBLIC_ENDPOINT")
+            or values.get("MINIO_PUBLIC_URL")
+            or values.get("S3_PUBLIC_ENDPOINT")
+        )
+        if minio_public_url and not values.get("MINIO_PUBLIC_ENDPOINT"):
+            values["MINIO_PUBLIC_ENDPOINT"] = minio_public_url
+
+        selected_endpoint = values.get("MINIO_ENDPOINT")
+        if (not selected_endpoint or selected_endpoint == "minio:9000") and minio_public_url:
+            values["MINIO_ENDPOINT"] = minio_public_url
+
+        if values.get("MINIO_ENDPOINT", "").startswith("https://"):
+            values["MINIO_SECURE"] = True
+        elif values.get("MINIO_ENDPOINT", "").startswith("http://") and values.get("MINIO_SECURE") is None:
+            values["MINIO_SECURE"] = False
 
         if values.get("AWS_ACCESS_KEY_ID") and not values.get("MINIO_ACCESS_KEY"):
             values["MINIO_ACCESS_KEY"] = values.get("AWS_ACCESS_KEY_ID")
