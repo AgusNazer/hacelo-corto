@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator, model_validator
-import secrets
 
 
 class Settings(BaseSettings):
@@ -63,7 +62,7 @@ class Settings(BaseSettings):
     MINIO_PUBLIC_ENDPOINT: str | None = Field(default=None)
     MINIO_PUBLIC_SECURE: bool | None = Field(default=None)
 
-    SECRET_KEY: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
+    SECRET_KEY: str = Field(default="hacelo-corto-demo-secret-key-2026-please-change")
     ALGORITHM: str = Field(default="HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60 * 24 * 7)
 

@@ -52,4 +52,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import os, urllib.request; urllib.request.urlopen(f\"http://localhost:{os.getenv('PORT', '8000')}/api/v1/health\")" || exit 1
 
 # Comando de inicio - Corre migraciones y luego inicia la API
-CMD ["bash", "./start.sh"]
+CMD ["sh", "-c", "WEB_CONCURRENCY=${WEB_CONCURRENCY:-1} bash ./start.sh"]
