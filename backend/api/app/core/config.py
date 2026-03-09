@@ -47,6 +47,8 @@ class Settings(BaseSettings):
             raise ValueError("DATABASE_URL debe comenzar con postgresql://")
         return v
 
+    # Redis puede usar REDIS_URL (Railway) o valores individuales (docker-compose)
+    REDIS_URL: str | None = Field(default=None)
     REDIS_HOST: str = Field(default="redis")
     REDIS_PORT: int = Field(default=6379)
     REDIS_DB: int = Field(default=0)
