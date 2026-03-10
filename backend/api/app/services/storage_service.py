@@ -44,7 +44,19 @@ class StorageService:
             aws_access_key_id=settings.MINIO_ACCESS_KEY,
             aws_secret_access_key=settings.MINIO_SECRET_KEY,
             region_name="us-east-1",
-            config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+            config=Config(
+                signature_version="s3v4",
+                s3={
+                    "addressing_style": "path",
+                    "use_accelerate_endpoint": False,
+                },
+                retries={
+                    "mode": "standard",
+                    "max_attempts": 3,
+                },
+                connect_timeout=5,
+                read_timeout=60,
+            ),
         )
 
     def _get_s3_client(self, endpoint: str | None = None, secure: bool | None = None):
