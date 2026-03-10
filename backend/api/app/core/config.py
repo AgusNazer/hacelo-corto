@@ -70,8 +70,14 @@ class Settings(BaseSettings):
         if values.get("AWS_ACCESS_KEY_ID") and not values.get("MINIO_ACCESS_KEY"):
             values["MINIO_ACCESS_KEY"] = values.get("AWS_ACCESS_KEY_ID")
 
+        if values.get("MINIO_ROOT_USER") and not values.get("MINIO_ACCESS_KEY"):
+            values["MINIO_ACCESS_KEY"] = values.get("MINIO_ROOT_USER")
+
         if values.get("AWS_SECRET_ACCESS_KEY") and not values.get("MINIO_SECRET_KEY"):
             values["MINIO_SECRET_KEY"] = values.get("AWS_SECRET_ACCESS_KEY")
+
+        if values.get("MINIO_ROOT_PASSWORD") and not values.get("MINIO_SECRET_KEY"):
+            values["MINIO_SECRET_KEY"] = values.get("MINIO_ROOT_PASSWORD")
 
         if values.get("S3_BUCKET") and not values.get("MINIO_BUCKET_VIDEOS"):
             values["MINIO_BUCKET_VIDEOS"] = values.get("S3_BUCKET")

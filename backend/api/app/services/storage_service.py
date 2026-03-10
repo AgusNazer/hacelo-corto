@@ -19,6 +19,34 @@ os.environ['AWS_S3_US_EAST_1_REGIONAL_ENDPOINT'] = 'regional'
 
 logger = setup_logging()
 
+
+def _disable_s3_redirect():
+    """Monkey-patch para desactivar S3RegionRedirector en boto3"""
+    try:
+        from botocore import utils
+        original_redirector = utils.S3RegionRedirector
+        
+        class NoOpS3RegionRedirector:
+            """Redirector nulo que no hace nada para evitar loops con MinIO"""
+            def __init__(self, *args, **kwargs):
+                pass
+            
+            def redirect_from_error(self, *args, **kwargs):
+                # No hacer nada, no redirigir
+                return None
+            
+            def get_bucket_region(self, *args, **kwargs):
+                return 'us-east-1'
+        
+        utils.S3RegionRedirector = NoOpS3RegionRedirector
+        logger.info("✅ S3RegionRedirector desactivado para MinIO")
+    except Exception as e:
+        logger.warning(f"⚠️ No se pudo desactivar S3RegionRedirector: {e}")
+
+
+# Aplicar monkey-patch al importar el módulo
+_disable_s3_redirect()
+
 class StorageService:
 
     def __init__(self):
