@@ -1,4 +1,5 @@
 import boto3
+import os
 
 from uuid import uuid4
 from urllib.parse import urlparse
@@ -12,6 +13,9 @@ from app.utils.exceptions import (
     BadRequestException,
     MinIOStorageException
 )
+
+# CRÍTICO: Deshabilitar redirects de región S3 para MinIO
+os.environ['AWS_S3_US_EAST_1_REGIONAL_ENDPOINT'] = 'regional'
 
 logger = setup_logging()
 
@@ -38,24 +42,21 @@ class StorageService:
             scheme = "https" if secure else "http"
             endpoint_url = f"{scheme}://{clean_endpoint}"
 
+        logger.info(f"🔧 Creando cliente S3 con endpoint: {endpoint_url}")
+
+        # Configuración MinIO-friendly: sin redirects, path-style addressing
         return boto3.client(
             "s3",
             endpoint_url=endpoint_url,
             aws_access_key_id=settings.MINIO_ACCESS_KEY,
             aws_secret_access_key=settings.MINIO_SECRET_KEY,
             region_name="us-east-1",
+            use_ssl=secure,
             config=Config(
                 signature_version="s3v4",
                 s3={
                     "addressing_style": "path",
-                    "use_accelerate_endpoint": False,
                 },
-                retries={
-                    "mode": "standard",
-                    "max_attempts": 3,
-                },
-                connect_timeout=5,
-                read_timeout=60,
             ),
         )
 

@@ -17,6 +17,9 @@ services:
       - MINIO_PUBLIC_ENDPOINT=localhost:9000
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_SECURE=false
+      - MINIO_BUCKET_VIDEOS=videos
+      - AWS_DEFAULT_REGION=us-east-1
       - DEBUG=True
       - LOG_FORMAT=json
     depends_on:
@@ -42,6 +45,9 @@ services:
       - MINIO_PUBLIC_ENDPOINT=localhost:9000
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_SECURE=false
+      - MINIO_BUCKET_VIDEOS=videos
+      - AWS_DEFAULT_REGION=us-east-1
       - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-hacelo_db}
       - WORKER_PIPELINE_DEBUG=false
       - WORKER_SOURCE_CACHE_DIR=/app/tmp/source_cache
