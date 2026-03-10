@@ -145,6 +145,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: list[str] = Field(
         default=["http://localhost:3000", "http://localhost:5173"]
     )
+    ALLOWED_ORIGIN_REGEX: str | None = Field(default=None)
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
@@ -171,6 +172,14 @@ class Settings(BaseSettings):
                 if cleaned:
                     origins.append(cleaned)
             return origins
+        return v
+
+    @field_validator("ALLOWED_ORIGIN_REGEX", mode="before")
+    @classmethod
+    def parse_cors_origin_regex(cls, v):
+        if isinstance(v, str):
+            cleaned = v.strip()
+            return cleaned or None
         return v
 
     RATE_LIMIT_ENABLED: bool = Field(default=False)
