@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator, model_validator
+import json
 
 
 class Settings(BaseSettings):
@@ -149,7 +150,27 @@ class Settings(BaseSettings):
     @classmethod
     def parse_cors_origins(cls, v):
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
+            value = v.strip()
+            if not value:
+                return []
+
+            # Soporta formato JSON: ["https://a.com", "https://b.com"]
+            if value.startswith("["):
+                try:
+                    parsed = json.loads(value)
+                    if isinstance(parsed, list):
+                        return [str(origin).strip() for origin in parsed if str(origin).strip()]
+                except json.JSONDecodeError:
+                    pass
+
+            # Soporta formato CSV: https://a.com,https://b.com
+            parts = value.split(",")
+            origins: list[str] = []
+            for origin in parts:
+                cleaned = origin.strip().strip('"').strip("'").strip("[]")
+                if cleaned:
+                    origins.append(cleaned)
+            return origins
         return v
 
     RATE_LIMIT_ENABLED: bool = Field(default=False)
