@@ -14,38 +14,7 @@ from app.utils.exceptions import (
     MinIOStorageException
 )
 
-# CRÍTICO: Deshabilitar redirects de región S3 para MinIO
-os.environ['AWS_S3_US_EAST_1_REGIONAL_ENDPOINT'] = 'regional'
-
 logger = setup_logging()
-
-
-def _disable_s3_redirect():
-    """Monkey-patch para desactivar S3RegionRedirector en boto3"""
-    try:
-        from botocore import utils
-        original_redirector = utils.S3RegionRedirector
-        
-        class NoOpS3RegionRedirector:
-            """Redirector nulo que no hace nada para evitar loops con MinIO"""
-            def __init__(self, *args, **kwargs):
-                pass
-            
-            def redirect_from_error(self, *args, **kwargs):
-                # No hacer nada, no redirigir
-                return None
-            
-            def get_bucket_region(self, *args, **kwargs):
-                return 'us-east-1'
-        
-        utils.S3RegionRedirector = NoOpS3RegionRedirector
-        logger.info("✅ S3RegionRedirector desactivado para MinIO")
-    except Exception as e:
-        logger.warning(f"⚠️ No se pudo desactivar S3RegionRedirector: {e}")
-
-
-# Aplicar monkey-patch al importar el módulo
-_disable_s3_redirect()
 
 class StorageService:
 
@@ -106,34 +75,30 @@ class StorageService:
 
     def _ensure_bucket_exists(self, s3_client, bucket: str) -> None:
         """
-        Verifica que un bucket exista en MinIO y lo crea si no existe.
-
+        Intenta crear el bucket si no existe.
+        NO verifica primero (head_bucket causa loop con MinIO).
+        
         Args:
             s3_client: Cliente S3 de boto3
             bucket: Nombre del bucket
 
         Raises:
-            MinIOStorageException: Si falla la verificación o creación
+            MinIOStorageException: Si falla la creación por razones distintas a "ya existe"
         """
         try:
-            # Solo verifica si el bucket existe
-            s3_client.head_bucket(Bucket=bucket)
-            return
+            # Intentar crear directamente sin verificar
+            s3_client.create_bucket(Bucket=bucket)
+            logger.info(f"✅ Bucket '{bucket}' creado")
         except ClientError as exc:
             error_code = exc.response.get("Error", {}).get("Code")
-            if error_code in ("404", "NoSuchBucket"):
-            # El bucket no existe, intentar crear
-                try:
-                    s3_client.create_bucket(Bucket=bucket)
-                except ClientError as create_exc:
-                    raise MinIOStorageException(
-                    f"Error creando bucket '{bucket}'", str(create_exc)
-                )
-            else:
-                # Otro error (permisos, endpoint, etc.)
-                raise MinIOStorageException(
-                    f"No se pudo verificar el bucket '{bucket}'", str(exc)
-                )
+            # Si ya existe, está bien
+            if error_code in ("BucketAlreadyOwnedByYou", "BucketAlreadyExists"):
+                logger.debug(f"Bucket '{bucket}' ya existe")
+                return
+            # Cualquier otro error es problemático
+            raise MinIOStorageException(
+                f"Error con bucket '{bucket}'", str(exc)
+            )
 
 
     def _extract_bucket_and_key(self, storage_path: str) -> tuple[str, str]:
