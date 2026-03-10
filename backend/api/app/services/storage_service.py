@@ -1,5 +1,6 @@
 import boto3
 import os
+import sys
 
 from uuid import uuid4
 from urllib.parse import urlparse
@@ -15,6 +16,24 @@ from app.utils.exceptions import (
 )
 
 logger = setup_logging()
+
+# CRÍTICO: Desactivar S3RegionRedirector antes de cualquier cliente
+os.environ['AWS_S3_US_EAST_1_REGIONAL_ENDPOINT'] = 'regional'
+
+# Monkey-patch de botocore ANTES de que se cree el cliente
+try:
+    from botocore.utils import S3RegionRedirector
+    original_init = S3RegionRedirector.__init__
+    
+    def patched_init(self, *args, **kwargs):
+        # No hacer nada
+        pass
+    
+    S3RegionRedirector.__init__ = patched_init
+    S3RegionRedirector.redirect_from_error = lambda *args, **kwargs: None
+    logger.info("✅ S3RegionRedirector desactivado")
+except Exception as e:
+    logger.warning(f"⚠️ No se pudo patchear S3RegionRedirector: {e}")
 
 class StorageService:
 
@@ -194,7 +213,6 @@ class StorageService:
         object_key = f"processed/{uuid4()}_{filename}"
 
         s3_client = self._get_s3_client()
-        self._ensure_bucket_exists(s3_client, bucket)
 
         # Detectar ContentType
         if filename.lower().endswith(".mp4"):
@@ -211,7 +229,20 @@ class StorageService:
                 s3_client.upload_fileobj(
                     f, bucket, object_key, ExtraArgs={"ContentType": content_type})
         except ClientError as exc:
-            raise MinIOStorageException("Error subiendo archivo a MinIO", str(exc))
+            # Si es "BucketNotFound", intentar crearla una sola vez
+            error_code = exc.response.get("Error", {}).get("Code")
+            if error_code == "NoSuchBucket":
+                logger.info(f"Bucket '{bucket}' no existe, intentando crear...")
+                try:
+                    s3_client.create_bucket(Bucket=bucket)
+                    # Reintentar upload
+                    with open(local_path, "rb") as f:
+                        s3_client.upload_fileobj(
+                            f, bucket, object_key, ExtraArgs={"ContentType": content_type})
+                except ClientError as retry_exc:
+                    raise MinIOStorageException("Error subiendo archivo a MinIO (después de crear bucket)", str(retry_exc))
+            else:
+                raise MinIOStorageException("Error subiendo archivo a MinIO", str(exc))
         except Exception as exc:
             raise MinIOStorageException("Error inesperado durante subida", str(exc))
 
@@ -240,7 +271,6 @@ class StorageService:
         object_key = f"processed/{uuid4()}_{filename}"
     
         s3_client = self._get_s3_client()
-        self._ensure_bucket_exists(s3_client, bucket)
     
         logger.info(f"💾 Subiendo archivo a MinIO desde file-like object")
     
@@ -249,7 +279,21 @@ class StorageService:
                 file_obj, bucket, object_key, ExtraArgs={"ContentType": "video/mp4"}
             )
         except ClientError as exc:
-            raise MinIOStorageException("Error subiendo archivo a MinIO", str(exc))
+            # Si es "BucketNotFound", intentar crearla una sola vez
+            error_code = exc.response.get("Error", {}).get("Code")
+            if error_code == "NoSuchBucket":
+                logger.info(f"Bucket '{bucket}' no existe, intentando crear...")
+                try:
+                    s3_client.create_bucket(Bucket=bucket)
+                    # Resetear file pointer y reintentar
+                    file_obj.seek(0)
+                    s3_client.upload_fileobj(
+                        file_obj, bucket, object_key, ExtraArgs={"ContentType": "video/mp4"}
+                    )
+                except ClientError as retry_exc:
+                    raise MinIOStorageException("Error subiendo archivo a MinIO (después de crear bucket)", str(retry_exc))
+            else:
+                raise MinIOStorageException("Error subiendo archivo a MinIO", str(exc))
         except Exception as exc:
             raise MinIOStorageException("Error inesperado durante subida", str(exc))
     
